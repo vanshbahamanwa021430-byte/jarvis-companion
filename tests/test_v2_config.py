@@ -22,6 +22,8 @@ class ConfigTests(unittest.TestCase):
     def test_defaults(self):
         c = load_config([])
         self.assertEqual((c.port, c.manual, c.ttl_seconds, c.log_format), (8765, False, 300, "json"))
+        self.assertFalse(c.allow_lan)
+        self.assertIsNone(c.openjarvis_url)
         self.assertIsNotNone(c.memory_db)
 
     def test_file_then_cli_precedence(self):

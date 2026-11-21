@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Jarvis" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:statusBarColor">@color/hud_bg</item>
+        <item name="android:navigationBarColor">@color/hud_bg</item>
+        <item name="android:windowBackground">@drawable/splash</item>
+        <item name="android:colorPrimary">@color/hud_cyan</item>
+        <item name="android:colorAccent">@color/hud_cyan</item>
+        <item name="android:textColorPrimary">@color/hud_text</item>
+        <item name="android:navigationBarDividerColor">@color/hud_bg</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

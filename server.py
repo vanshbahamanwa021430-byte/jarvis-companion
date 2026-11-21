@@ -1,12 +1,20 @@
-"""Single-user, loopback-only demonstration. Never expose this server to a network."""
+"""Single-user approval desk. Binds IPv4 loopback by default.
+
+Pass --allow-lan (or set allow_lan in the config file) to bind every interface
+so a phone on the same trusted LAN can open the dashboard. That mode prints a
+warning. Do not use it on an untrusted network, and never expose this server
+to the internet.
+"""
 from __future__ import annotations
 
 import hmac
+import ipaddress
 import json
 import os
 import re
 import secrets
 import signal
+import socket
 import sqlite3
 import sys
 import threading
@@ -17,6 +25,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 from urllib.parse import parse_qsl, urlsplit
 
+from brain import BrainError, ask as brain_ask, check_health, validate_openjarvis_url
 from broker import Broker, BrokerError, proposal_catalog
 from config import ConfigError, load_config
 from jlog import get_logger, setup_logging
@@ -31,6 +40,7 @@ ASSETS = {
     "/app.css": ("app.css", "text/css"),
     "/app.js": ("app.js", "text/javascript"),
     "/icon.svg": ("icon.svg", "image/svg+xml"),
+    "/img/jarvis-theme.webp": ("img/jarvis-theme.webp", "image/webp"),
 }
 COOKIE = "jarvis_owner"
 LOOPBACK = "127.0.0.1"
@@ -41,6 +51,68 @@ MAX_WORKER_FAILURES = 5
 AGENT_RATE_LIMIT = 5  # proposals per rolling minute
 _KEY_PATTERN = re.compile(r"[A-Za-z0-9_-]+")
 log = get_logger()
+
+LAN_BIND = "0.0.0.0"
+LAN_WARNING = (
+    "WARNING: LAN binding is on. The approval desk is reachable on your local network. "
+    "Use this only on a trusted home network. Anyone on that network who has the owner "
+    "unlock key can approve actions. The default remains loopback-only."
+)
+
+
+def is_private_ipv4(host: str) -> bool:
+    """True for RFC1918 and link-local IPv4 addresses, not loopback or 0.0.0.0."""
+    try:
+        ip = ipaddress.IPv4Address(host)
+    except ipaddress.AddressValueError:
+        return False
+    if host != ip.compressed:
+        return False
+    if ip.is_unspecified or ip.is_loopback or ip.is_multicast or ip.is_reserved:
+        return False
+    return bool(ip.is_private or ip.is_link_local)
+
+
+def host_header_name(header: str, server_port: int) -> str | None:
+    """Return the Host name if the header targets this server port, else None."""
+    if type(header) is not str or not header:
+        return None
+    suffix = f":{server_port}"
+    if header.endswith(suffix):
+        name = header[: -len(suffix)]
+        return name or None
+    if server_port == 80 and ":" not in header:
+        return header
+    return None
+
+
+def valid_host_header(header: str, server_port: int, allow_lan: bool) -> bool:
+    name = host_header_name(header, server_port)
+    if name in ("localhost", LOOPBACK):
+        return True
+    return bool(allow_lan and name is not None and is_private_ipv4(name))
+
+
+def local_private_ipv4s() -> list[str]:
+    found: set[str] = set()
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.connect(("192.0.2.1", 1))
+            ip = sock.getsockname()[0]
+            if is_private_ipv4(ip):
+                found.add(ip)
+    except OSError:
+        pass
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET, socket.SOCK_STREAM):
+            ip = info[4][0]
+            if is_private_ipv4(ip):
+                found.add(ip)
+    except OSError:
+        pass
+    return sorted(found)
+
+
 
 
 class RequestRejected(Exception):
@@ -114,8 +186,13 @@ class App(ThreadingHTTPServer):
         memory: WorkspaceMemory | None = None,
         session_seconds: int = 3600,
         worker_interval: float = .35,
+        allow_lan: bool = False,
+        openjarvis_url: str | None = None,
     ):
-        if address[0] != LOOPBACK:
+        if allow_lan:
+            if address[0] != LAN_BIND:
+                raise ValueError("LAN mode binds to 0.0.0.0 only.")
+        elif address[0] != LOOPBACK:
             raise ValueError("This demo accepts IPv4 loopback only.")
         if type(key) is not str or len(key) < 8:
             raise ValueError("Owner key must be a string of at least 8 characters.")
@@ -133,6 +210,8 @@ class App(ThreadingHTTPServer):
         self.worker_state = "off"
         super().__init__(address, Handler)
         self.broker, self.key, self.memory = broker, key, memory
+        self.allow_lan = bool(allow_lan)
+        self.openjarvis_url = openjarvis_url
         self.lock = threading.Lock()
         self.agent_key = agent_key
         self.auto = bool(auto)
@@ -185,6 +264,8 @@ class App(ThreadingHTTPServer):
             "memory": self.memory is not None,
             "session_expires_in": remaining,
             "version": VERSION,
+            "brain": bool(self.openjarvis_url),
+            "openjarvis_url": self.openjarvis_url or "",
         }
 
     def server_close(self) -> None:
@@ -252,9 +333,9 @@ class Handler(BaseHTTPRequestHandler):
     # ------------------------------------------------------------------ guards
     @property
     def allowed_host(self) -> bool:
-        return self.headers.get("Host", "") in {
-            f"localhost:{self.server.server_port}", f"127.0.0.1:{self.server.server_port}"
-        } and len(self.headers.get_all("Host", [])) == 1
+        hosts = self.headers.get_all("Host", [])
+        return len(hosts) == 1 and valid_host_header(
+            hosts[0], self.server.server_port, self.server.allow_lan)
 
     def owner(self) -> bool:
         try:
@@ -316,6 +397,15 @@ class Handler(BaseHTTPRequestHandler):
                                     "memory_kinds": kinds()})
         if path == "/api/status":
             return self.reply(200, {**broker.status(), **self.server.runtime_info()})
+        if path == "/api/brain/status":
+            url = self.server.openjarvis_url
+            if not url:
+                return self.reply(200, {"enabled": False, "url": "", "ok": False})
+            try:
+                health = check_health(url)
+            except BrainError as err:
+                return self.reply(err.status, {"enabled": True, "url": url, "ok": False, "error": err.code})
+            return self.reply(200, {"enabled": True, "url": url, **health})
         if path == "/api/history":
             if not set(params) <= {"status", "action", "limit", "before"}:
                 raise RequestRejected(400, "invalid_query")
@@ -419,6 +509,35 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(200, result)
         if path in actions or path in {"/api/pause", "/api/propose", "/api/logout"}:
             return self.reply(400, {"error": "invalid_fields"})
+        if path == "/api/brain/config" and set(body) == {"url"}:
+            try:
+                normalised = validate_openjarvis_url(body.get("url"))
+            except BrainError as err:
+                return self.reply(err.status, {"error": err.code})
+            with self.server.lock:
+                self.server.openjarvis_url = normalised
+            log.info("brain_url_changed", extra={"enabled": normalised is not None})
+            return self.reply(200, {"enabled": normalised is not None, "url": normalised or ""})
+        if path == "/api/brain/ask" and set(body) == {"message"}:
+            url = self.server.openjarvis_url
+            if not url:
+                return self.reply(409, {"error": "brain_disabled"})
+            message = body.get("message")
+            if type(message) is not str:
+                return self.reply(400, {"error": "invalid_text"})
+
+            def _propose(action: str, target: str, reason: str):
+                return broker.propose(action, target, reason)
+
+            try:
+                result = brain_ask(url, message, _propose)
+            except BrainError as err:
+                return self.reply(err.status, {"error": err.code})
+            log.info("brain_ask", extra={
+                "proposals": len(result.get("proposals") or []),
+                "blocked": len(result.get("blocked") or []),
+            })
+            return self.reply(200, result)
         if path.startswith("/api/memory/"):
             if self.server.memory is None:
                 return self.reply(404, {"error": "memory_disabled"})
@@ -475,9 +594,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             config.memory_db.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
             memory = WorkspaceMemory(config.memory_db)
         key = secrets.token_urlsafe(18)
-        app = App((LOOPBACK, config.port), broker, key, auto=not config.manual, agent_key=agent_key,
+        bind_host = LAN_BIND if config.allow_lan else LOOPBACK
+        app = App((bind_host, config.port), broker, key, auto=not config.manual, agent_key=agent_key,
                   memory=memory, session_seconds=config.session_minutes * 60,
-                  worker_interval=config.worker_interval)
+                  worker_interval=config.worker_interval, allow_lan=config.allow_lan,
+                  openjarvis_url=config.openjarvis_url)
     except (ValueError, OSError, sqlite3.Error) as exc:
         # ValueError messages here never contain key material.
         logger.error("startup_failed", extra={"error": type(exc).__name__, "detail": str(exc)[:200]})
@@ -500,6 +621,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                                              **config.public()})
         print(f"Local demo: http://127.0.0.1:{app.server_port}/", flush=True)
         print(f"Owner unlock key (keep private): {key}", flush=True)
+        if config.allow_lan:
+            print(LAN_WARNING, flush=True)
+            ips = local_private_ipv4s()
+            if ips:
+                for ip in ips:
+                    print(f"LAN demo: http://{ip}:{app.server_port}/", flush=True)
+            else:
+                print("LAN demo: no private IPv4 address was detected; "
+                      "enter this computer's LAN IP in the Android app.", flush=True)
         app.serve_forever(poll_interval=0.2)
     logger.info("shutdown_complete")
     return 0

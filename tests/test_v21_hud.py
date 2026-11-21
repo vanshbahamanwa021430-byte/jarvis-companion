@@ -46,12 +46,18 @@ class HudStaticTests(unittest.TestCase):
         self.assertIn(': "dark"; } catch { return "dark"; }', self.js)
         root = self.css[self.css.index(":root,:root[data-theme=\"dark\"]{"):]
         self.assertIn("color-scheme:dark", root[:root.index("}")])
+        self.assertIn("--bg:#050302", root[:root.index("}")])
+        self.assertIn("--accent:#ff9a1f", root[:root.index("}")])
+        self.assertIn('--ink:#ffe9c8', root[:root.index("}")])
         self.assertIn(':root[data-theme="light"]{', self.css)
+        # Local artwork is an <img>, never a CSS file url(), so the strict url() rule still holds.
+        self.assertIn(".core-photo", self.css)
+        self.assertIn(".core-photo-veil", self.css)
 
     def test_decorative_graphics_are_hidden_from_assistive_tech(self):
         for svg in re.findall(r"<svg\b[^>]*>", self.html):
             self.assertIn('aria-hidden="true"', svg)
-        for cls in ("telemetry", "hud-frame", "core-label", "boot-visual"):
+        for cls in ("telemetry", "hud-frame", "core-label", "boot-visual", "core-art"):
             tag = re.search(r'<[a-z]+[^>]*class="[^"]*\b' + cls + r'\b[^"]*"[^>]*>', self.html).group(0)
             self.assertIn('aria-hidden="true"', tag, cls)
         # The unlock emblem wrapper hides its icons.
@@ -88,7 +94,8 @@ class HudServedTests(unittest.TestCase):
         self.s.close()
 
     def test_static_assets_served_with_csp_and_types(self):
-        expected = {"/": "text/html", "/app.css": "text/css", "/app.js": "text/javascript", "/icon.svg": "image/svg+xml"}
+        expected = {"/": "text/html", "/app.css": "text/css", "/app.js": "text/javascript",
+                    "/icon.svg": "image/svg+xml", "/img/jarvis-theme.webp": "image/webp"}
         for path, ctype in expected.items():
             with self.subTest(path=path):
                 status, body, headers = self.s.request("GET", path)
@@ -98,10 +105,14 @@ class HudServedTests(unittest.TestCase):
                 self.assertIn("default-src 'none'", csp)
                 self.assertIn("script-src 'self'", csp)
                 self.assertIn("style-src 'self'", csp)
+                self.assertIn("img-src 'self'", csp)
                 self.assertNotIn("unsafe-inline", csp)
         status, body, _ = self.s.request("GET", "/")
         self.assertIn(b'class="core-svg"', body)
+        self.assertIn(b'src="/img/jarvis-theme.webp"', body)
         self.assertNotIn(b"style=", body)
+        status, body, _ = self.s.request("GET", "/img/jarvis-theme.webp")
+        self.assertTrue(body.startswith(b"RIFF") and b"WEBP" in body[:16])
 
     def test_version_is_2_1(self):
         self.assertEqual(server.VERSION, "2.1.0")

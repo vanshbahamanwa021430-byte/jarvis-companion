@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.1.0 amber theme, Android APK, OpenJarvis brain
+
+Builds on the HUD theme and the Android/LAN work. Default bind is still loopback. CSP, no CORS, one approval per access, and token rules are unchanged. All previous tests pass.
+
+### Changed
+- Dark theme accents moved from cyan to amber/orange (`#ff9a1f` / `#ffb347` on `#050302`). Text and muted colours meet WCAG AA on the solid fallback background and on the opaque panels.
+- The core uses a locally served WebP (`/img/jarvis-theme.webp`) behind the SVG rings, with a dark radial veil. No remote URLs and no CSS file-url functions (an `<img>` tag keeps the existing `url()` test). Light theme hides the photograph.
+- Android launcher icon and splash use a crop of the same orb. The APK remains self-signed with the project debug keystore.
+
+### Added
+- **Brain tab and proxy.** `openjarvis_url` / `--openjarvis-url`, plus `/api/brain/config`, `/api/brain/status` and `/api/brain/ask`. The desk calls OpenJarvis `/v1/chat/completions` with only `jarvis_request_approval`. Other tool calls are blocked and never executed. Approval tool calls are queued on the broker.
+- `openjarvis_tool.py` still registers `jarvis_request_approval` on the current OpenJarvis ToolRegistry API and now sets `requires_confirmation=True`. It still only proposes, never executes.
+- Tests: `tests/test_v21_brain.py`, plus HUD checks for the WebP asset and amber tokens.
+
+### Notes
+- The orb artwork is Marvel/Disney, for personal use only; keep the repository private.
+- A live OpenJarvis + Ollama runtime was not installed in the build environment.
+
+## 2.1.0 Android APK (same series)
+
+An optional Android WebView shell and an opt-in LAN bind so a phone can open the HUD. Default bind is still IPv4 loopback. Existing safeguards (CSP, no CORS, one Host header, exact same-origin POSTs, one approval per access, tokens) are unchanged. All previous tests still pass.
+
+### Added
+- **`--allow-lan` / `allow_lan`:** opt-in bind on `0.0.0.0`. `host`, `bind` and `address` stay forbidden. The server still prints the loopback URL and owner key first, then a clear warning and any detected private IPv4 URLs.
+- When LAN mode is on, the Host header may be `localhost`, `127.0.0.1`, or a private/link-local IPv4 address on the server port. Public IPs, hostnames and port mismatches are still rejected. Origin must still be an exact same-origin match. CORS is still never granted.
+- **Android APK** (`android-app/`): a self-signed WebView shell. You enter the desk URL (`http://<PC-LAN-IP>:8765`, or `http://127.0.0.1:8765` with `adb reverse`). The app then loads the live dashboard from the Python server so the page stays same-origin. It does not weaken CSP or add a JavaScript bridge.
+
+### Tests
+- New: `tests/test_v21_lan.py`. Covers private IPv4 detection, Host-header policy, config defaults, HTTP Host/Origin behaviour in LAN mode, and the warning printed by `--allow-lan`.
+
 ## 2.1.0 (v2.1 "HUD theme")
 
 A visual redesign only. The backend, API, security checks and one-approval-per-access rules are unchanged; the only server change is `VERSION = "2.1.0"`. All 105 v2 tests pass unchanged, and 11 new tests were added (116 total).

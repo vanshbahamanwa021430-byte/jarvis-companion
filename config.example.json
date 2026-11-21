@@ -7,5 +7,7 @@
   "session_minutes": 60,
   "worker_interval": 0.35,
   "log_level": "INFO",
-  "log_format": "json"
+  "log_format": "json",
+  "allow_lan": false,
+  "openjarvis_url": null
 }

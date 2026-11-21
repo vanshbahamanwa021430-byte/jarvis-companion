@@ -6,3 +6,13 @@ __pycache__/
 *.log
 config.json
 .env*
+
+# Android shell build output (the project sources are committed)
+android-app/local.properties
+android-app/.gradle/
+android-app/build/
+android-app/app/build/
+android-app/*.iml
+android-app/*.apk
+.local-demo/
+jarvis-companion-v2.1.apk

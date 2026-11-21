@@ -29,6 +29,11 @@ const ERRORS = Object.freeze({
   invalid_text: "Enter plain text within the length limit.", invalid_kind: "Choose a record kind.",
   internal_error: "The server hit an unexpected error. Check the terminal log.",
   network: "Can’t reach the local server. Is it still running?",
+  brain_disabled: "Set an OpenJarvis address in the Brain tab first.",
+  brain_unreachable: "Can’t reach OpenJarvis at that address. Is jarvis gui running on this computer?",
+  brain_rejected: "OpenJarvis rejected that request. Check the server and try again.",
+  invalid_url: "Use a loopback or private LAN address, for example 127.0.0.1:8000.",
+  tool_blocked: "OpenJarvis asked for a tool that this desk does not allow. Nothing was run.",
 });
 const dateFormat = new Intl.DateTimeFormat(undefined, {dateStyle: "medium", timeStyle: "short"});
 
@@ -170,7 +175,7 @@ function showLock(message) {
   S.history = {next: null, loaded: false, paged: false};
   S.activity = {next: null, loaded: false, paged: false};
   S.memory = {loaded: false};
-  for (const id of ["requests", "results", "history", "activity", "mem-records", "action", "target", "mem-workspace", "mem-project"]) $(id).replaceChildren();
+  for (const id of ["requests", "results", "history", "activity", "mem-records", "action", "target", "mem-workspace", "mem-project", "brain-log"]) $(id).replaceChildren();
   $("reason").value = "";
   $("key").value = "";
   show("unlock");
@@ -382,6 +387,7 @@ function renderDesk() {
   $("paused-banner").hidden = !st.paused;
   $("worker-banner").hidden = st.worker !== "stopped";
   $("tab-memory").hidden = !st.memory;
+  fillBrain();
   $("version").textContent = st.version ? "Version " + st.version : "";
   setLive(st.paused ? "paused" : "live");
   fillCatalog();
@@ -685,8 +691,95 @@ $("mem-record-form").addEventListener("submit", async (e) => {
   }, "Record saved.");
 });
 
+
+/* ---------- OpenJarvis brain ---------- */
+function fillBrain() {
+  const st = S.state || {};
+  const enabled = Boolean(st.brain && st.openjarvis_url);
+  $("brain-pill").textContent = enabled ? "On" : "Off";
+  if (document.activeElement !== $("brain-url") && $("brain-url").value === "") {
+    $("brain-url").value = st.openjarvis_url || "";
+  } else if (document.activeElement !== $("brain-url") && st.openjarvis_url && $("brain-url").value !== st.openjarvis_url) {
+    $("brain-url").value = st.openjarvis_url;
+  }
+}
+
+function setBrainError(id, message) {
+  const el = $(id);
+  el.hidden = !message;
+  el.textContent = message || "";
+}
+
+function appendBrainLog(role, text) {
+  const item = h("article", {cls: "item"});
+  item.append(h("p", {cls: "muted small", text: role}), h("p", {text}));
+  $("brain-log").prepend(item);
+}
+
+$("brain-config-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setBrainError("brain-config-error", "");
+  const btn = $("brain-save");
+  btn.disabled = true; btn.setAttribute("aria-busy", "true");
+  try {
+    const result = await api("brain/config", {url: $("brain-url").value.trim()});
+    if (S.state) { S.state.brain = result.enabled; S.state.openjarvis_url = result.url || ""; }
+    $("brain-url").value = result.url || "";
+    fillBrain();
+    $("brain-status").textContent = result.enabled ? "Saved. OpenJarvis is the brain for this session." : "Saved. The brain is off.";
+    toast(result.enabled ? "OpenJarvis address saved." : "OpenJarvis brain turned off.");
+  } catch (error) {
+    setBrainError("brain-config-error", error.message);
+  } finally {
+    btn.disabled = false; btn.removeAttribute("aria-busy");
+  }
+});
+
+$("brain-check").addEventListener("click", async () => {
+  setBrainError("brain-config-error", "");
+  $("brain-status").textContent = "Checking…";
+  try {
+    const result = await api("brain/status");
+    if (result.ok) $("brain-status").textContent = "OpenJarvis is reachable" + (result.engine ? " (" + result.engine + ")." : ".");
+    else if (!result.enabled) $("brain-status").textContent = "No OpenJarvis address is set.";
+    else $("brain-status").textContent = "OpenJarvis did not respond. Start it with jarvis gui on this computer.";
+  } catch (error) {
+    $("brain-status").textContent = "";
+    setBrainError("brain-config-error", error.message);
+  }
+});
+
+$("brain-ask-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setBrainError("brain-ask-error", "");
+  const message = $("brain-message").value.trim();
+  if (!message) { setBrainError("brain-ask-error", "Enter a prompt."); return $("brain-message").focus(); }
+  const btn = $("brain-ask");
+  btn.disabled = true; btn.setAttribute("aria-busy", "true");
+  appendBrainLog("You", message);
+  try {
+    const result = await api("brain/ask", {message});
+    if (result.reply) appendBrainLog("OpenJarvis", result.reply);
+    const queued = result.proposals || [];
+    const blocked = result.blocked || [];
+    if (queued.length) {
+      appendBrainLog("Access desk", "OpenJarvis asked for approval. " + queued.length + " request(s) are in the permission queue. Nothing has been run.");
+      toast("A request is waiting in the permission queue.");
+    }
+    if (blocked.length) {
+      appendBrainLog("Access desk", "A tool was blocked. This desk only allows the approval request tool, and never runs actions on its own.");
+    }
+    if (!result.reply && !queued.length && !blocked.length) appendBrainLog("OpenJarvis", "(No text in the reply.)");
+    $("brain-message").value = "";
+  } catch (error) {
+    setBrainError("brain-ask-error", error.message);
+  } finally {
+    btn.disabled = false; btn.removeAttribute("aria-busy");
+  }
+});
+
 /* ---------- tabs ---------- */
-const TABS = ["requests", "history", "activity", "memory"];
+const TABS = ["requests", "history", "activity", "memory", "brain"];
 function selectTab(name, focus = false) {
   S.tab = name;
   for (const t of TABS) {
@@ -700,6 +793,7 @@ function selectTab(name, focus = false) {
   if (name === "history" && !S.history.loaded) void loadHistory(true);
   else if (name === "activity") void loadActivity(true);
   else if (name === "memory") void initMemory();
+  else if (name === "brain") fillBrain();
 }
 for (const t of TABS) $("tab-" + t).addEventListener("click", () => selectTab(t));
 document.querySelector(".tabs").addEventListener("keydown", (e) => {

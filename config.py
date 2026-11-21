@@ -1,8 +1,10 @@
 """Configuration: defaults < JSON config file < CLI flags.
 
-The bind address is deliberately NOT configurable: the server is IPv4
-loopback-only. Secrets (the proposal key) come only from the environment,
-never from the config file, so the file can be shared or committed safely.
+The bind address is IPv4 loopback (127.0.0.1) by default. `host`, `bind` and
+`address` cannot be set. To listen on the LAN, set `allow_lan` to true or pass
+`--allow-lan`; the server then binds 0.0.0.0 and prints a warning. Secrets
+(the proposal key) come only from the environment, never from the config file,
+so the file can be shared or committed safely.
 """
 
 from __future__ import annotations
@@ -17,9 +19,9 @@ from typing import Any, Sequence
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
 LOG_FORMATS = ("json", "text")
 _FORBIDDEN_KEYS = {
-    "host": "The bind address is fixed to 127.0.0.1 (loopback only).",
-    "bind": "The bind address is fixed to 127.0.0.1 (loopback only).",
-    "address": "The bind address is fixed to 127.0.0.1 (loopback only).",
+    "host": "The bind address is fixed to 127.0.0.1 (loopback only) unless you set allow_lan or pass --allow-lan.",
+    "bind": "The bind address is fixed to 127.0.0.1 (loopback only) unless you set allow_lan or pass --allow-lan.",
+    "address": "The bind address is fixed to 127.0.0.1 (loopback only) unless you set allow_lan or pass --allow-lan.",
     "proposal_key": "Set JARVIS_PROPOSAL_KEY in the environment; never store keys in config files.",
     "agent_key": "Set JARVIS_PROPOSAL_KEY in the environment; never store keys in config files.",
     "owner_key": "The owner key is generated fresh at every start and never configured.",
@@ -41,6 +43,8 @@ class Config:
     worker_interval: float = 0.35
     log_level: str = "INFO"
     log_format: str = "json"
+    allow_lan: bool = False
+    openjarvis_url: str | None = None
 
     def validate(self) -> "Config":
         if type(self.port) is not int or not 0 <= self.port <= 65535:
@@ -58,6 +62,14 @@ class Config:
             raise ConfigError(f"log_level must be one of {', '.join(LOG_LEVELS)}")
         if self.log_format not in LOG_FORMATS:
             raise ConfigError(f"log_format must be one of {', '.join(LOG_FORMATS)}")
+        if type(self.allow_lan) is not bool:
+            raise ConfigError("allow_lan must be true or false")
+        if self.openjarvis_url is not None:
+            from brain import BrainError, validate_openjarvis_url
+            try:
+                self = replace(self, openjarvis_url=validate_openjarvis_url(self.openjarvis_url))
+            except BrainError:
+                raise ConfigError("openjarvis_url must be an http(s) loopback or private LAN address") from None
         if not str(self.db) or str(self.db) == ":memory:":
             raise ConfigError("db must be a file path")
         if self.memory_db is not None and (not str(self.memory_db) or str(self.memory_db) == ":memory:"):
@@ -98,13 +110,16 @@ def _from_file(path: Path) -> dict[str, Any]:
         if values["memory_db"] is not None and not isinstance(values["memory_db"], str):
             raise ConfigError("memory_db must be a string path or null")
         values["memory_db"] = None if values["memory_db"] is None else Path(values["memory_db"])
+    if "openjarvis_url" in values and values["openjarvis_url"] is not None:
+        if not isinstance(values["openjarvis_url"], str):
+            raise ConfigError("openjarvis_url must be a string or null")
     return values
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="server.py",
-        description="Jarvis Companion: single-user, loopback-only approval desk (demo data only).",
+        description="Jarvis Companion: single-user approval desk (demo data only). Binds loopback unless --allow-lan is set.",
     )
     parser.add_argument("--config", type=Path, help="JSON config file (see config.example.json)")
     parser.add_argument("--port", type=int, help="loopback port (0 = pick a free port; default 8765)")
@@ -118,6 +133,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--worker-interval", type=float, help="worker poll interval in seconds")
     parser.add_argument("--log-level", choices=LOG_LEVELS)
     parser.add_argument("--log-format", choices=LOG_FORMATS)
+    parser.add_argument("--openjarvis-url", dest="openjarvis_url",
+                        help="OpenJarvis API base URL (http://127.0.0.1:8000). Loopback or private LAN only.")
+    parser.add_argument(
+        "--allow-lan", dest="allow_lan", action="store_true", default=None,
+        help="bind on all interfaces so a phone on the same LAN can open the dashboard. "
+             "Default is loopback-only. Prints a warning. Do not use on an untrusted network.",
+    )
     return parser
 
 
@@ -130,7 +152,7 @@ def load_config(argv: Sequence[str] | None = None) -> Config:
         "port": args.port, "db": args.db, "memory_db": args.memory_db, "manual": args.manual,
         "ttl_seconds": args.ttl_seconds, "session_minutes": args.session_minutes,
         "worker_interval": args.worker_interval, "log_level": args.log_level,
-        "log_format": args.log_format,
+        "log_format": args.log_format, "allow_lan": args.allow_lan, "openjarvis_url": args.openjarvis_url,
     }
     config = replace(config, **{k: v for k, v in overrides.items() if v is not None})
     if args.no_memory:

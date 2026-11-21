@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Jarvis Companion</string>
+    <string name="connect_title">JARVIS COMPANION</string>
+    <string name="connect_subtitle">Connect to the access desk on your computer</string>
+    <string name="url_hint">http://192.168.1.10:8765</string>
+    <string name="url_label">Server address</string>
+    <string name="connect">Connect</string>
+    <string name="change_server">Change server</string>
+    <string name="help_text">The Python server must be running on your computer. On the same Wi-Fi, start it with --allow-lan and enter the LAN address printed in the terminal, for example http://192.168.x.x:8765.\n\nOver USB, keep the default loopback server and run adb reverse tcp:8765 tcp:8765, then enter http://127.0.0.1:8765.\n\nPaste the owner unlock key from the terminal after the HUD opens. Do not use this on public Wi-Fi.</string>
+</resources>

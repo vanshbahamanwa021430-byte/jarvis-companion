@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#03070d">
+  <meta name="theme-color" content="#050302">
   <meta name="referrer" content="no-referrer">
   <title>Jarvis Companion · Access desk</title>
   <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -118,6 +118,10 @@
 
         <div class="core-wrap">
           <div class="core">
+            <div class="core-art" aria-hidden="true">
+              <img class="core-photo" src="/img/jarvis-theme.webp" alt="" width="912" height="948">
+              <span class="core-photo-veil"></span>
+            </div>
             <svg class="core-svg" viewBox="-200 -200 400 400" aria-hidden="true" focusable="false">
             <defs>
               <radialGradient id="core-glow">
@@ -201,6 +205,7 @@
         <button role="tab" id="tab-history" aria-controls="panel-history" aria-selected="false" tabindex="-1">History</button>
         <button role="tab" id="tab-activity" aria-controls="panel-activity" aria-selected="false" tabindex="-1">Activity</button>
         <button role="tab" id="tab-memory" aria-controls="panel-memory" aria-selected="false" tabindex="-1" hidden>Memory</button>
+        <button role="tab" id="tab-brain" aria-controls="panel-brain" aria-selected="false" tabindex="-1">Brain</button>
       </div>
 
       <section id="panel-requests" role="tabpanel" aria-labelledby="tab-requests" class="panel-grid">
@@ -288,8 +293,37 @@
         </aside>
       </section>
 
+      <section id="panel-brain" role="tabpanel" aria-labelledby="tab-brain" class="panel-grid" hidden>
+        <section class="card" aria-labelledby="brain-title">
+          <header class="card-head"><h2 id="brain-title">OpenJarvis brain</h2><span id="brain-pill" class="pill">Off</span></header>
+          <p class="muted small">OpenJarvis is the optional local language model on this computer. The phone talks only to this access desk; the desk forwards your prompt to OpenJarvis. Any tool it wants to run still needs your approval here. Nothing is executed automatically.</p>
+          <form id="brain-config-form">
+            <label for="brain-url">OpenJarvis server address</label>
+            <input id="brain-url" name="brain-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="127.0.0.1:8000" maxlength="200" aria-describedby="brain-url-help">
+            <p id="brain-url-help" class="muted small">Use the address printed by jarvis gui on this computer, usually 127.0.0.1:8000. Loopback or a private LAN IP only.</p>
+            <p id="brain-config-error" class="field-error" hidden></p>
+            <div class="row">
+              <button class="button" type="submit" id="brain-save">Save address</button>
+              <button class="button ghost" type="button" id="brain-check">Check connection</button>
+            </div>
+            <p id="brain-status" class="muted small" role="status"></p>
+          </form>
+        </section>
+        <section class="card" aria-labelledby="brain-ask-title">
+          <header class="card-head"><h2 id="brain-ask-title">Ask the brain</h2></header>
+          <p class="muted small">Prompts are sent through this desk. If OpenJarvis asks to read a sample item, it appears in the permission queue for you to allow or deny once.</p>
+          <form id="brain-ask-form">
+            <label for="brain-message">Prompt</label>
+            <textarea id="brain-message" name="brain-message" rows="4" maxlength="4000" required></textarea>
+            <p id="brain-ask-error" class="field-error" hidden></p>
+            <button class="button" type="submit" id="brain-ask">Send</button>
+          </form>
+          <div id="brain-log" class="list" aria-live="polite"></div>
+        </section>
+      </section>
+
       <footer class="foot">
-        <span>Loopback only · never forward this port · demo data only</span>
+        <span>Loopback by default · demo data only · one approval per access</span>
         <span id="version"></span>
       </footer>
     </section>

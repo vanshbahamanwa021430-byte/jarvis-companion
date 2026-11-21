@@ -26,8 +26,8 @@ class DashboardStaticTests(unittest.TestCase):
     def test_every_element_id_used_by_script_exists(self):
         ids = set(re.findall(r'\bid="([^"]+)"', self.html))
         used = set(re.findall(r'\$\("([^"]+)"\)', self.js))
-        dynamic = {"tab-" + t for t in ("requests", "history", "activity", "memory")} | \
-                  {"panel-" + t for t in ("requests", "history", "activity", "memory")}
+        dynamic = {"tab-" + t for t in ("requests", "history", "activity", "memory", "brain")} | \
+                  {"panel-" + t for t in ("requests", "history", "activity", "memory", "brain")}
         self.assertFalse((used - ids), f"missing ids: {used - ids}")
         self.assertTrue(dynamic <= ids)
 
@@ -40,7 +40,7 @@ class DashboardStaticTests(unittest.TestCase):
 
     def test_accessibility_basics(self):
         self.assertIn('role="tablist"', self.html)
-        self.assertEqual(self.html.count('role="tab"'), 4)
+        self.assertEqual(self.html.count('role="tab"'), 5)
         self.assertIn('aria-live="polite"', self.html)
         self.assertIn('class="skip"', self.html)
         for match in re.finditer(r'<(input|select|textarea)[^>]*id="([^"]+)"', self.html):
@@ -53,7 +53,7 @@ class DashboardStaticTests(unittest.TestCase):
         routes = set(re.findall(r'api\("([a-z/]+)', self.js)) | set(re.findall(r'mutate\("([a-z]+)"', self.js))
         known = {"state", "status", "history", "audit", "login", "logout", "propose", "approve", "deny",
                  "execute", "pause", "memory/workspaces", "memory/projects", "memory/records",
-                 "memory/records/delete"}
+                 "memory/records/delete", "brain/config", "brain/status", "brain/ask"}
         self.assertTrue(routes <= known, routes - known)
 
     @unittest.skipUnless(shutil.which("node"), "node not installed")
