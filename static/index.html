@@ -35,7 +35,7 @@
   <header class="topbar">
     <a class="brand" href="#main" aria-label="Jarvis Companion home">
       <span class="logo"><svg aria-hidden="true"><use href="#i-core"/></svg></span>
-      <span class="brand-text"><strong>Jarvis Companion</strong><small>v2.1 · HUD · demo data only</small></span>
+      <span class="brand-text"><strong>Jarvis Companion</strong><small>v2.2 · HUD · demo data only</small></span>
     </a>
     <div class="hud-clock" aria-hidden="true"><time id="clock">--:--:--</time><span id="clock-date"></span></div>
     <div class="topbar-actions">
@@ -189,11 +189,17 @@
         <button id="pause" class="button danger big" type="button" aria-pressed="false">
           <svg aria-hidden="true"><use href="#i-pause"/></svg><span id="pause-label">Pause all access</span>
         </button>
+        <button id="kill" class="button danger big" type="button" aria-pressed="false">
+          <span id="kill-label">Kill switch</span>
+        </button>
       </div>
 
       <div id="paused-banner" class="banner warn" hidden>
         <svg aria-hidden="true"><use href="#i-pause"/></svg>
         <div><strong>All access is paused.</strong> Outstanding approvals were revoked. Resuming does not restore them; new requests still need your approval.</div>
+      </div>
+      <div id="killed-banner" class="banner danger" hidden>
+        <div><strong>The kill switch is on.</strong> Nothing will be proposed or run until you turn it off, then resume access. The phone will also stop listening and will refuse device actions.</div>
       </div>
       <div id="worker-banner" class="banner error" hidden>
         <svg aria-hidden="true"><use href="#i-alert"/></svg>
@@ -206,6 +212,7 @@
         <button role="tab" id="tab-activity" aria-controls="panel-activity" aria-selected="false" tabindex="-1">Activity</button>
         <button role="tab" id="tab-memory" aria-controls="panel-memory" aria-selected="false" tabindex="-1" hidden>Memory</button>
         <button role="tab" id="tab-brain" aria-controls="panel-brain" aria-selected="false" tabindex="-1">Brain</button>
+        <button role="tab" id="tab-connect" aria-controls="panel-connect" aria-selected="false" tabindex="-1">Connect</button>
       </div>
 
       <section id="panel-requests" role="tabpanel" aria-labelledby="tab-requests" class="panel-grid">
@@ -320,6 +327,62 @@
           </form>
           <div id="brain-log" class="list" aria-live="polite"></div>
         </section>
+      </section>
+
+      <section id="panel-connect" role="tabpanel" aria-labelledby="tab-connect" class="panel-grid" hidden>
+        <div class="stack">
+          <section class="card" aria-labelledby="voice-title">
+            <header class="card-head"><h2 id="voice-title">Voice</h2><span id="voice-pill" class="pill">Muted</span></header>
+            <p class="muted small">Say “Hey Jarvis”, then a command. The first command only queues a request. Risky actions also need you to say Confirm or Cancel, and always show a card here. Nothing runs from the wake word alone.</p>
+            <p id="voice-status" class="muted small" role="status"></p>
+            <form id="voice-mute-form">
+              <button class="button" type="submit" id="voice-mute">Mute microphone</button>
+            </form>
+          </section>
+          <section class="card" aria-labelledby="phone-title">
+            <header class="card-head"><h2 id="phone-title">Phone</h2><span id="phone-pill" class="pill">Not seen</span></header>
+            <p class="muted small" id="phone-help">The Android app can stay connected in the background with a persistent notification. Accessibility and the notification listener are opt-in, explained on the phone, and every action still needs your approval. This cannot be listed on the Play Store as a general phone-control service; sideload only.</p>
+            <dl id="phone-status" class="scope"></dl>
+          </section>
+          <section class="card" aria-labelledby="plugins-title">
+            <header class="card-head"><h2 id="plugins-title">Plugins</h2></header>
+            <p class="muted small">Declarative manifests only. Enabling a plugin does not run it; each action still needs approval.</p>
+            <div id="plugin-list" class="list"></div>
+          </section>
+        </div>
+        <aside class="stack">
+          <section class="card" aria-labelledby="google-title">
+            <header class="card-head"><h2 id="google-title">Google apps</h2></header>
+            <p class="muted small">Sign-in happens on this computer in your browser, not on the phone. Use a separate Desktop OAuth client. Paste the client id only (it is not a secret). Exact Cloud Console steps are in the README. Read actions still need approval; send and write always need approval. Tokens stay in the desk’s local demo folder.</p>
+            <form id="google-client-form">
+              <label for="google-client-id">OAuth client id</label>
+              <input id="google-client-id" name="google-client-id" maxlength="120" autocomplete="off" spellcheck="false" placeholder="1234-abc.apps.googleusercontent.com">
+              <button class="button" type="submit" id="google-client-save">Save client id</button>
+            </form>
+            <p id="google-client-status" class="muted small" role="status"></p>
+            <div id="google-services" class="list"></div>
+          </section>
+          <section class="card" aria-labelledby="hook-title">
+            <header class="card-head"><h2 id="hook-title">Webhooks and MCP</h2></header>
+            <p class="muted small">Only loopback or private IPv4 addresses. Each call is approved first. Redirects are not followed.</p>
+            <form id="webhook-form">
+              <label for="webhook-name">Webhook name</label>
+              <input id="webhook-name" maxlength="40" required>
+              <label for="webhook-url">Address</label>
+              <input id="webhook-url" maxlength="200" required placeholder="127.0.0.1:9090" spellcheck="false">
+              <button class="button" type="submit">Add webhook</button>
+            </form>
+            <div id="webhook-list" class="list"></div>
+            <form id="mcp-form">
+              <label for="mcp-name">MCP server name</label>
+              <input id="mcp-name" maxlength="40" required>
+              <label for="mcp-url">Address</label>
+              <input id="mcp-url" maxlength="200" required placeholder="127.0.0.1:8750" spellcheck="false">
+              <button class="button" type="submit">Add MCP server</button>
+            </form>
+            <div id="mcp-list" class="list"></div>
+          </section>
+        </aside>
       </section>
 
       <footer class="foot">

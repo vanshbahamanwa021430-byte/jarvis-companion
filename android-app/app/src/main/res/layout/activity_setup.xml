@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/hud_bg"
+    android:fillViewport="true">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Phone setup"
+            android:textColor="@color/hud_accent"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Every action still needs your approval. Nothing runs silently. Use the kill switch to stop everything at once."
+            android:textColor="@color/hud_text"
+            android:textSize="14sp" />
+        <TextView
+            android:id="@+id/setup_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="@color/hud_muted"
+            android:textSize="13sp" />
+        <Button android:id="@+id/btn_notifications" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:background="@drawable/connect_button" android:text="Allow notifications" android:textAllCaps="false" android:textColor="@color/hud_bg"/>
+        <Button android:id="@+id/btn_mic" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:background="@drawable/connect_button" android:text="Allow microphone (Hey Jarvis)" android:textAllCaps="false" android:textColor="@color/hud_bg"/>
+        <Button android:id="@+id/btn_battery" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:background="@drawable/connect_button" android:text="Ignore battery optimisation" android:textAllCaps="false" android:textColor="@color/hud_bg"/>
+        <Button android:id="@+id/btn_accessibility" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:background="@drawable/connect_button" android:text="Open Accessibility settings" android:textAllCaps="false" android:textColor="@color/hud_bg"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/accessibility_explanation"
+            android:textColor="@color/hud_muted"
+            android:textSize="13sp" />
+        <Button android:id="@+id/btn_listener" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/connect_button" android:text="Open notification listener settings" android:textAllCaps="false" android:textColor="@color/hud_bg"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/listener_explanation"
+            android:textColor="@color/hud_muted"
+            android:textSize="13sp" />
+        <CheckBox
+            android:id="@+id/chk_boot"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Start Jarvis after the phone boots (opt-in)"
+            android:textColor="@color/hud_text" />
+        <CheckBox
+            android:id="@+id/chk_mute"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Mute the microphone"
+            android:textColor="@color/hud_text" />
+        <Button android:id="@+id/btn_kill" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="18dp" android:background="@color/hud_error" android:text="Kill switch" android:textAllCaps="false" android:textColor="@color/hud_text"/>
+        <Button android:id="@+id/btn_done" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:background="@drawable/connect_button" android:text="Done" android:textAllCaps="false" android:textColor="@color/hud_bg"/>
+    </LinearLayout>
+</ScrollView>

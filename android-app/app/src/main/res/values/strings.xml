@@ -7,5 +7,13 @@
     <string name="url_label">Server address</string>
     <string name="connect">Connect</string>
     <string name="change_server">Change server</string>
+    <string name="phone_setup">Phone setup</string>
     <string name="help_text">The Python server must be running on your computer. On the same Wi-Fi, start it with --allow-lan and enter the LAN address printed in the terminal, for example http://192.168.x.x:8765.\n\nOver USB, keep the default loopback server and run adb reverse tcp:8765 tcp:8765, then enter http://127.0.0.1:8765.\n\nPaste the owner unlock key from the terminal after the HUD opens. Do not use this on public Wi-Fi.</string>
+    <string name="accessibility_explanation">Jarvis Companion can open apps, tap, type, scroll, go back or home, and read text on the screen only after you approve each action on a card (and, for risky actions, after you say Confirm). It does not type or read in the background. You can turn this service off at any time, and the in-app kill switch immediately stops all actions. This is a personal, sideloaded assistant; Google Play does not allow general phone-control accessibility services.</string>
+    <string name="notif_channel">Jarvis connection</string>
+    <string name="notif_title">Jarvis is connected</string>
+    <string name="notif_listening">Listening for Hey Jarvis</string>
+    <string name="notif_muted">Microphone muted</string>
+    <string name="notif_pending">A request needs your approval</string>
+    <string name="listener_explanation">The optional notification listener only runs after you enable it in Android settings, and reading notifications still requires your approval each time.</string>
 </resources>

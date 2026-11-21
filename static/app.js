@@ -34,6 +34,19 @@ const ERRORS = Object.freeze({
   brain_rejected: "OpenJarvis rejected that request. Check the server and try again.",
   invalid_url: "Use a loopback or private LAN address, for example 127.0.0.1:8000.",
   tool_blocked: "OpenJarvis asked for a tool that this desk does not allow. Nothing was run.",
+  killed: "The kill switch is on. Turn it off, then resume access.",
+  google_not_configured: "Paste a Google Desktop OAuth client id first. See the README.",
+  google_not_connected: "Connect that Google app in the Connect tab first.",
+  invalid_client_id: "That does not look like a Google OAuth client id.",
+  invalid_name: "Use a short plain name.",
+  unknown_plugin: "That plugin is not installed.",
+  unknown_service: "Unknown Google service.",
+  muted: "Voice is muted.",
+  unrecognised: "That command was not understood.",
+  device_action: "This action runs on the phone after you approve it.",
+  redirect_blocked: "Redirects are not followed.",
+  webhook_unreachable: "That webhook address could not be reached.",
+  mcp_unreachable: "That MCP server could not be reached.",
 });
 const dateFormat = new Intl.DateTimeFormat(undefined, {dateStyle: "medium", timeStyle: "short"});
 
@@ -384,23 +397,31 @@ function renderDesk() {
   show("desk");
   $("pause").setAttribute("aria-pressed", String(st.paused));
   $("pause").replaceChildren(icon(st.paused ? "play" : "pause"), h("span", {text: st.paused ? "Resume access" : "Pause all access", attrs: {id: "pause-label"}}));
-  $("paused-banner").hidden = !st.paused;
+  $("kill").setAttribute("aria-pressed", String(Boolean(st.killed)));
+  $("kill-label").textContent = st.killed ? "Reset kill switch" : "Kill switch";
+  $("paused-banner").hidden = !st.paused || Boolean(st.killed);
+  $("killed-banner").hidden = !st.killed;
   $("worker-banner").hidden = st.worker !== "stopped";
   $("tab-memory").hidden = !st.memory;
   fillBrain();
+  fillConnect();
   $("version").textContent = st.version ? "Version " + st.version : "";
   setLive(st.paused ? "paused" : "live");
   fillCatalog();
-  const active = st.requests.filter((i) => i.status === "pending" || i.status === "approved");
-  const pending = active.filter((i) => i.status === "pending").length;
-  const closed = st.requests.length - active.length;
+  const demoActive = st.requests.filter((i) => i.status === "pending" || i.status === "approved");
+  const actionActive = (st.action_requests || []).filter((i) => i.status === "pending" || i.status === "approved");
+  const active = demoActive;
+  const pending = demoActive.filter((i) => i.status === "pending").length + actionActive.filter((i) => i.status === "pending").length;
+  const approvedCount = demoActive.filter((i) => i.status === "approved").length + actionActive.filter((i) => i.status === "approved").length;
+  const closed = st.requests.length - demoActive.length;
   S.history_total = closed;
-  updateStats({pending, approved: active.length - pending, worker: st.worker, session_expires_in: st.session_expires_in,
+  updateStats({pending, approved: approvedCount, worker: st.worker, session_expires_in: st.session_expires_in,
     history: closed, history_capped: st.requests.length >= 100});
   $("queue-count").textContent = pending + " pending";
   const focused = $("requests").contains(document.activeElement) ? document.activeElement.dataset.focus : null;
-  $("requests").replaceChildren(...(active.length ? active.map(requestCard)
-    : [empty("No requests waiting", st.paused ? "Access is paused. Resume to create test requests." : "Create a demo request to see how an approval works.")]));
+  const cards = [...actionActive.map(actionCard), ...demoActive.map(requestCard)];
+  $("requests").replaceChildren(...(cards.length ? cards
+    : [empty("No requests waiting", st.killed ? "The kill switch is on." : st.paused ? "Access is paused. Resume to create test requests." : "Create a demo request, or speak a command after Hey Jarvis.")]));
   if (focused !== null) {
     const next = [...$("requests").querySelectorAll("button")].find((b) => b.dataset.focus === focused && !b.disabled)
       || $("requests").querySelector("button:not(:disabled)") || $("tab-requests");
@@ -693,6 +714,131 @@ $("mem-record-form").addEventListener("submit", async (e) => {
 
 
 /* ---------- OpenJarvis brain ---------- */
+function actionCard(item) {
+  const st = S.state;
+  const card = h("article", {cls: "item is-" + item.status, attrs: {"aria-label": (item.label || item.kind) + ", " + pick(STATUSES, item.status)}});
+  const rows = [["Action", item.label || item.kind], ["Source", item.source], ["Risk", item.risk],
+    ["Runs on", item.runs_on === "device" ? "Phone" : "This desk"], ["Reason", item.reason || "No reason given."],
+    ["Requested", timeEl(item.created_at)], ["Expires", countdown(item.expires_at)]];
+  card.append(
+    h("div", {cls: "item-head"}, h("h3", {text: item.label || item.kind}), badge(item.status)),
+    scope(rows),
+  );
+  const controls = h("div", {cls: "controls"});
+  const name = item.label || item.kind;
+  if (item.status === "pending") {
+    const allow = button("Allow once", "primary", (e) => api("actions/approve", {id: item.id}).then(() => toast("Allowed once. It can run only this time.")).then(loadState), "check");
+    const deny = button("Deny", "danger", (e) => api("actions/deny", {id: item.id}).then(() => toast("Request denied.")).then(loadState), "x");
+    allow.disabled = st.paused || st.killed;
+    allow.dataset.focus = "a-approve-" + item.id;
+    deny.dataset.focus = "a-deny-" + item.id;
+    allow.setAttribute("aria-label", "Allow once: " + name);
+    deny.setAttribute("aria-label", "Deny: " + name);
+    controls.append(allow, deny);
+    if (item.risk === "high") controls.append(h("p", {cls: "muted small", text: "Risky: say Confirm or Cancel, or use these buttons."}));
+  } else if (item.status === "approved") {
+    if (item.runs_on === "device") {
+      controls.append(h("span", {cls: "running", text: "Waiting for the phone to run this once…"}));
+    } else if (st.auto && st.worker === "running") {
+      controls.append(h("span", {cls: "running", text: "Running automatically…"}));
+    }
+  }
+  card.append(controls);
+  return card;
+}
+
+function yn(value) { return value ? "Yes" : "No"; }
+
+function fillConnect() {
+  const st = S.state || {};
+  const voice = st.voice || {};
+  const muted = Boolean(voice.muted);
+  $("voice-pill").textContent = st.killed ? "Killed" : muted ? "Muted" : voice.waiting ? "Waiting for confirm" : "Ready";
+  $("voice-mute").textContent = muted ? "Unmute microphone" : "Mute microphone";
+  const waiting = voice.waiting ? " Waiting for you to confirm: " + voice.waiting.label + "." : "";
+  $("voice-status").textContent = "Wake word: Hey Jarvis." + waiting;
+  const device = st.device;
+  $("phone-pill").textContent = device ? "Seen" : "Not seen";
+  const dl = $("phone-status");
+  dl.replaceChildren();
+  if (!device) {
+    dl.append(h("dt", {text: "Status"}), h("dd", {text: "The phone app has not checked in yet. Open it, connect, and leave the background service running."}));
+  } else {
+    const rows = [
+      ["Accessibility", yn(device.accessibility)],
+      ["Notification listener", yn(device.notifications)],
+      ["Battery exemption", yn(device.battery_exempt)],
+      ["Start on boot", yn(device.boot_enabled)],
+      ["Listening", yn(device.listening)],
+      ["Mic muted", yn(device.voice_muted)],
+    ];
+    for (const [k, v] of rows) dl.append(h("dt", {text: k}), h("dd", {text: v}));
+  }
+  const plugins = st.plugins || [];
+  $("plugin-list").replaceChildren(...(plugins.length ? plugins.map((plugin) => {
+    const row = h("article", {cls: "item"});
+    row.append(
+      h("div", {cls: "item-head"}, h("h3", {text: plugin.name}), h("span", {cls: "pill", text: plugin.enabled ? "On" : "Off"})),
+      h("p", {cls: "muted small", text: plugin.description || ""}),
+      h("p", {cls: "meta", text: "Permissions: " + (plugin.permissions || []).join(", ")}),
+    );
+    const btn = button(plugin.enabled ? "Disable" : "Enable", plugin.enabled ? "" : "primary", () =>
+      api("plugins/enable", {id: plugin.id, enabled: !plugin.enabled}).then(loadState));
+    row.append(h("div", {cls: "controls"}, btn));
+    return row;
+  }) : [empty("No plugins", "Example plugins were not found.")]));
+  const g = st.google || {services: {}};
+  $("google-client-status").textContent = g.configured ? "A client id is saved on this desk." : "No client id yet.";
+  const services = g.services || {};
+  const names = ["gmail", "calendar", "drive", "contacts", "tasks"];
+  $("google-services").replaceChildren(...names.map((name) => {
+    const rec = services[name] || {};
+    const row = h("article", {cls: "item"});
+    row.append(
+      h("div", {cls: "item-head"}, h("h3", {text: name}), h("span", {cls: "pill", text: rec.connected ? "Connected" : "Off"})),
+    );
+    const controls = h("div", {cls: "controls"});
+    const read = button("Connect read", "primary", () => startGoogle(name, "read"));
+    controls.append(read);
+    if (name !== "contacts") {
+      const write = button(name === "gmail" ? "Connect send" : "Connect write", "", () => startGoogle(name, name === "gmail" ? "send" : "write"));
+      controls.append(write);
+    }
+    if (rec.connected) {
+      controls.append(button("Disconnect", "danger", () => api("google/disconnect", {service: name}).then(loadState)));
+    }
+    row.append(controls);
+    return row;
+  }));
+  const hooks = st.webhooks || [];
+  $("webhook-list").replaceChildren(...(hooks.length ? hooks.map((item) => {
+    const row = h("article", {cls: "item"});
+    row.append(h("div", {cls: "item-head"}, h("h3", {text: item.name}), h("span", {cls: "pill", text: "Private"})));
+    row.append(h("p", {cls: "meta", text: item.url.split("://").slice(1).join("://")}));
+    row.append(h("div", {cls: "controls"}, button("Remove", "danger", () => api("webhooks/remove", {id: item.id}).then(loadState))));
+    return row;
+  }) : [empty("No webhooks", "Add a private address to propose HTTP calls.")]));
+  const servers = st.mcp || [];
+  $("mcp-list").replaceChildren(...(servers.length ? servers.map((item) => {
+    const row = h("article", {cls: "item"});
+    const tools = (item.tools || []).map((t) => t.name).join(", ") || "Not listed yet";
+    row.append(h("div", {cls: "item-head"}, h("h3", {text: item.name}), h("span", {cls: "pill", text: item.ok ? "Ready" : "Added"})));
+    row.append(h("p", {cls: "meta", text: tools}));
+    const controls = h("div", {cls: "controls"});
+    controls.append(
+      button("List tools", "", () => api("mcp/refresh", {id: item.id}).then(loadState)),
+      button("Remove", "danger", () => api("mcp/remove", {id: item.id}).then(loadState)),
+    );
+    row.append(controls);
+    return row;
+  }) : [empty("No MCP servers", "Add a private MCP HTTP address. Tool calls still need approval.")]));
+}
+
+async function startGoogle(service, access) {
+  const result = await api("google/start", {service, access});
+  if (result && result.auth_url) location.assign(result.auth_url);
+}
+
 function fillBrain() {
   const st = S.state || {};
   const enabled = Boolean(st.brain && st.openjarvis_url);
@@ -779,7 +925,7 @@ $("brain-ask-form").addEventListener("submit", async (event) => {
 });
 
 /* ---------- tabs ---------- */
-const TABS = ["requests", "history", "activity", "memory", "brain"];
+const TABS = ["requests", "history", "activity", "memory", "brain", "connect"];
 function selectTab(name, focus = false) {
   S.tab = name;
   for (const t of TABS) {
@@ -794,6 +940,7 @@ function selectTab(name, focus = false) {
   else if (name === "activity") void loadActivity(true);
   else if (name === "memory") void initMemory();
   else if (name === "brain") fillBrain();
+  else if (name === "connect") fillConnect();
 }
 for (const t of TABS) $("tab-" + t).addEventListener("click", () => selectTab(t));
 document.querySelector(".tabs").addEventListener("keydown", (e) => {
@@ -853,6 +1000,60 @@ $("logout").addEventListener("click", async () => {
   toast("Access desk locked.");
 });
 $("retry").addEventListener("click", boot);
+
+$("kill").addEventListener("click", async (e) => {
+  if (!S.state) return;
+  const killed = !S.state.killed;
+  try {
+    await api("kill", {killed});
+    await loadState();
+    toast(killed ? "Kill switch on. All access stopped." : "Kill switch off. Resume access to allow new requests.");
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+$("voice-mute-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const muted = !(S.state && S.state.voice && S.state.voice.muted);
+  try {
+    await api("voice/mute", {muted});
+    await loadState();
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+$("google-client-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    await api("google/config", {client_id: $("google-client-id").value.trim()});
+    await loadState();
+    toast("Client id saved on this desk.");
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+$("webhook-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    await api("webhooks/add", {name: $("webhook-name").value.trim(), url: $("webhook-url").value.trim()});
+    $("webhook-name").value = "";
+    $("webhook-url").value = "";
+    await loadState();
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
+$("mcp-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  try {
+    await api("mcp/add", {name: $("mcp-name").value.trim(), url: $("mcp-url").value.trim()});
+    $("mcp-name").value = "";
+    $("mcp-url").value = "";
+    await loadState();
+  } catch (error) {
+    toast(error.message, true);
+  }
+});
 
 async function boot() {
   show("loading");

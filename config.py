@@ -19,6 +19,8 @@ from typing import Any, Sequence
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
 LOG_FORMATS = ("json", "text")
 _FORBIDDEN_KEYS = {
+    "google_client_secret": "Do not put a Google client secret in the config file. Use a Desktop OAuth client with PKCE, or set GOOGLE_CLIENT_SECRET in the environment.",
+    "google_tokens": "Token files are not configured here.",
     "host": "The bind address is fixed to 127.0.0.1 (loopback only) unless you set allow_lan or pass --allow-lan.",
     "bind": "The bind address is fixed to 127.0.0.1 (loopback only) unless you set allow_lan or pass --allow-lan.",
     "address": "The bind address is fixed to 127.0.0.1 (loopback only) unless you set allow_lan or pass --allow-lan.",
@@ -45,6 +47,8 @@ class Config:
     log_format: str = "json"
     allow_lan: bool = False
     openjarvis_url: str | None = None
+    google_client_id: str | None = None
+    plugins_dir: Path | None = None
 
     def validate(self) -> "Config":
         if type(self.port) is not int or not 0 <= self.port <= 65535:
@@ -70,6 +74,14 @@ class Config:
                 self = replace(self, openjarvis_url=validate_openjarvis_url(self.openjarvis_url))
             except BrainError:
                 raise ConfigError("openjarvis_url must be an http(s) loopback or private LAN address") from None
+        if self.google_client_id is not None:
+            from google_oauth import re_client
+            if type(self.google_client_id) is not str or not re_client(self.google_client_id):
+                raise ConfigError("google_client_id must be a Google OAuth client id or null")
+        if self.plugins_dir is not None:
+            if not isinstance(self.plugins_dir, (str, Path)):
+                raise ConfigError("plugins_dir must be a path or null")
+            self = replace(self, plugins_dir=Path(self.plugins_dir))
         if not str(self.db) or str(self.db) == ":memory:":
             raise ConfigError("db must be a file path")
         if self.memory_db is not None and (not str(self.memory_db) or str(self.memory_db) == ":memory:"):
@@ -83,6 +95,7 @@ class Config:
         data = asdict(self)
         data["db"] = str(self.db)
         data["memory_db"] = None if self.memory_db is None else str(self.memory_db)
+        data["plugins_dir"] = None if self.plugins_dir is None else str(self.plugins_dir)
         return data
 
 
@@ -113,6 +126,13 @@ def _from_file(path: Path) -> dict[str, Any]:
     if "openjarvis_url" in values and values["openjarvis_url"] is not None:
         if not isinstance(values["openjarvis_url"], str):
             raise ConfigError("openjarvis_url must be a string or null")
+    if "google_client_id" in values and values["google_client_id"] is not None:
+        if not isinstance(values["google_client_id"], str):
+            raise ConfigError("google_client_id must be a string or null")
+    if "plugins_dir" in values and values["plugins_dir"] is not None:
+        if not isinstance(values["plugins_dir"], str):
+            raise ConfigError("plugins_dir must be a string path or null")
+        values["plugins_dir"] = Path(values["plugins_dir"])
     return values
 
 
@@ -135,6 +155,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--log-format", choices=LOG_FORMATS)
     parser.add_argument("--openjarvis-url", dest="openjarvis_url",
                         help="OpenJarvis API base URL (http://127.0.0.1:8000). Loopback or private LAN only.")
+    parser.add_argument("--google-client-id", dest="google_client_id",
+                        help="Google OAuth Desktop client id (not a secret). See docs/GOOGLE_OAUTH.md.")
+    parser.add_argument("--plugins-dir", dest="plugins_dir", type=Path,
+                        help="Directory of declarative plugin manifests")
     parser.add_argument(
         "--allow-lan", dest="allow_lan", action="store_true", default=None,
         help="bind on all interfaces so a phone on the same LAN can open the dashboard. "
@@ -153,6 +177,7 @@ def load_config(argv: Sequence[str] | None = None) -> Config:
         "ttl_seconds": args.ttl_seconds, "session_minutes": args.session_minutes,
         "worker_interval": args.worker_interval, "log_level": args.log_level,
         "log_format": args.log_format, "allow_lan": args.allow_lan, "openjarvis_url": args.openjarvis_url,
+        "google_client_id": args.google_client_id, "plugins_dir": args.plugins_dir,
     }
     config = replace(config, **{k: v for k, v in overrides.items() if v is not None})
     if args.no_memory:

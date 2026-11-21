@@ -1,0 +1,16 @@
+{
+  "id": "clock-alarm",
+  "name": "Clock alarm",
+  "version": "1.0.0",
+  "description": "Propose a phone alarm. The Clock app still opens on the device after you approve.",
+  "permissions": ["phone.alarm"],
+  "actions": [
+    {
+      "id": "set",
+      "label": "Set an alarm",
+      "permission": "phone.alarm",
+      "risk": "low",
+      "params": {"hour": "int", "minute": "int"}
+    }
+  ]
+}

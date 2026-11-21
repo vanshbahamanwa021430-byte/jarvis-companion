@@ -1,0 +1,16 @@
+{
+  "id": "local-note",
+  "name": "Local note",
+  "version": "1.0.0",
+  "description": "Propose a short note for the owner desk (workspace memory). Nothing is written until you approve.",
+  "permissions": ["memory.write"],
+  "actions": [
+    {
+      "id": "add",
+      "label": "Add a local note",
+      "permission": "memory.write",
+      "risk": "low",
+      "params": {"text": "string"}
+    }
+  ]
+}

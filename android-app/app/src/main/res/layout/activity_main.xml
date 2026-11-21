@@ -96,6 +96,16 @@
                 android:visibility="gone" />
 
             <Button
+                android:id="@+id/phone_setup"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="10dp"
+                android:background="@color/hud_bg"
+                android:text="@string/phone_setup"
+                android:textAllCaps="false"
+                android:textColor="@color/hud_cyan" />
+
+            <Button
                 android:id="@+id/connect_button"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"

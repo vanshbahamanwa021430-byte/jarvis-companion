@@ -1,0 +1,16 @@
+{
+  "id": "webhook-ping",
+  "name": "Webhook ping",
+  "version": "1.0.0",
+  "description": "Propose a GET or POST to a webhook connector you already added. Every call still needs approval.",
+  "permissions": ["webhook.http"],
+  "actions": [
+    {
+      "id": "ping",
+      "label": "Ping a webhook",
+      "permission": "webhook.http",
+      "risk": "high",
+      "params": {"connector_id": "id"}
+    }
+  ]
+}

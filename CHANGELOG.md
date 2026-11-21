@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.2.0 voice-first phone control, Google connectors, plugins
+
+Builds on v2.1. The core model is unchanged: every action is proposed and needs an explicit owner approval before it can run, the default bind is loopback, and CSP / no CORS / one-approval-per-access still hold. 185 automated tests pass (145 previous plus 40 new).
+
+### Added
+- **Voice-first desk and phone.** Wake word “Hey Jarvis”. Transcripts are parsed into typed actions (`voice.py`). The first utterance only queues a request. Risky actions also need a spoken Confirm or Cancel, and always show an on-screen card. Android uses SpeechRecognizer (offline preferred when the device has a model) plus TextToSpeech replies; no Porcupine, and no Vosk model is bundled.
+- **Background service.** Persistent notification, opt-in start-on-boot, and a prompt to ignore battery optimisation. Mute and kill actions live on the notification.
+- **Phone control (opt-in Accessibility Service + optional notification listener).** Open apps, tap/type/scroll/back/home, read screen text, dialer, SMS drafts, alarms, settings, Maps/YouTube intents. Each action is an approval card; the global kill switch stops everything. Accessibility is explained in-app. Sideload only — Play Store policy does not allow a general “run my phone” accessibility service.
+- **Google connectors.** Least-privilege OAuth (Gmail, Calendar, Drive, Contacts, Tasks) with PKCE and a placeholder Desktop client id. Tokens are a mode-0600 file on the desk, not encrypted at rest. Read still needs approval; send/write always need approval. YouTube and Maps use on-device intents, not OAuth. See `docs/GOOGLE_OAUTH.md`.
+- **Plugins, MCP, webhooks.** Declarative plugin manifests (three examples shipped). MCP HTTP client and generic webhooks, loopback/private IPv4 only, no redirects, all routed through the approval broker.
+- Android WebView shell updated to 2.2.0 (`app.jarviscompanion.hud`), still signed with the project debug keystore.
+
+### Notes
+- A live Google OAuth sign-in, a real microphone on a phone, and Accessibility on a device were not verified in this build environment.
+- The orb artwork remains Marvel/Disney, personal use only; keep the repository private.
+
+
 ## 2.1.0 amber theme, Android APK, OpenJarvis brain
 
 Builds on the HUD theme and the Android/LAN work. Default bind is still loopback. CSP, no CORS, one approval per access, and token rules are unchanged. All previous tests pass.

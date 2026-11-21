@@ -1,6 +1,20 @@
-# Jarvis Companion · v2.1 "HUD theme" (milestone 3, improved)
+# Jarvis Companion · v2.2 “voice-first desk”
 
 The first backend increment of an Android-first assistant. Only fictional resources are enabled. The selected assistant engine is the upstream [open-jarvis/OpenJarvis repository](https://github.com/open-jarvis/OpenJarvis), not a fork or a replacement. This increment includes an optional OpenJarvis tool adapter, a tested local agent API, and an Android WebView APK that opens the HUD from the Python server on your computer. A Brain tab can point the desk at a local OpenJarvis server (`jarvis gui`, usually 127.0.0.1:8000). The phone still talks only to this desk; tool calls are queued for your approval and are never auto-executed. A full OpenJarvis + Ollama runtime was not installed in this build environment. Private hosting is not verified.
+
+## What's new in v2.2
+
+Voice-first control of the desk and, with opt-in Android services, of your own phone. Every action is still proposed and needs your explicit approval before it can run. Loopback remains the default bind. The repository stays private.
+
+- **Hey Jarvis.** The phone’s background service can listen for the wake word (Android SpeechRecognizer, offline preferred when the device has a model). Say a command; the desk parses it into a typed action and queues it. Risky actions also need you to say Confirm or Cancel, and always show a card. There is a visible mic state and a mute toggle. Spoken replies use Android TextToSpeech. No Porcupine; no Vosk model is bundled.
+- **Background.** A foreground service with a persistent notification keeps the connection when you leave the app. Start-on-boot is opt-in. The setup screen can ask Android to ignore battery optimisation.
+- **Phone control (opt-in).** An Accessibility Service, clearly explained in the app, can open apps, tap, type, scroll, go back or home, and read screen text after you approve the card. Intents cover the dialer, SMS drafts (not silent send), alarms, settings, Maps and YouTube. An optional notification listener can read notifications only after a separate approval. A global kill switch on the desk, the notification and the phone setup screen stops everything.
+- **Google apps.** Connect Gmail, Calendar, Drive, Contacts and Tasks from the Connect tab using a Desktop OAuth client you create. Least-privilege scopes, PKCE, tokens in a mode-0600 file on the desk. Read still needs approval; send and write always need approval. See [docs/GOOGLE_OAUTH.md](docs/GOOGLE_OAUTH.md). Do not reuse another project’s client.
+- **Other apps and services.** A plugin manifest system (examples: `local-note`, `clock-alarm`, `webhook-ping`), an MCP HTTP client, and generic webhooks. Destinations must be loopback or private IPv4. Every call goes through the approval broker.
+
+**Play Store.** A general “run my whole phone” accessibility service is not something you can ship on Google Play. This APK is for personal sideload.
+
+**What v2.2 does *not* verify:** automated tests cover parsing, the approval/confirmation flow, plugin manifests, webhook SSRF policy, a mocked MCP server, and a mocked Google token/API transport (185 tests). Headless Chrome screenshots of the new Connect tab were taken. This APK was not installed on a physical phone or a booted emulator in this environment, so the real microphone, Accessibility, notification listener, boot restart, battery prompt, and a live Google sign-in were not verified.
 
 ## Working memory increment
 
@@ -94,6 +108,21 @@ The APK is a small HUD-themed shell. It does not run the Python broker on the ph
 4. Use **Change server** if you need to point the app at a different address.
 
 The application id is `app.jarviscompanion.hud`. The APK is signed with a project debug keystore, not a store or Prvlar key. The launcher icon and splash use a crop of the same core orb. To rebuild it: `scripts/build-apk.sh` (needs a JDK and the Android SDK).
+
+
+## Set up v2.2 on your computer and phone
+
+1. Start the desk as in v2.1 (`python server.py --allow-lan` on trusted Wi-Fi, or `adb reverse` for USB).
+2. Install `jarvis-companion-v2.2.apk` (same project debug key as v2.1). Open the app, enter the desk address, paste the owner key.
+3. Tap **Phone setup**. Allow notifications and the microphone if you want “Hey Jarvis”. Optionally ignore battery optimisation, and optionally enable **Start Jarvis after the phone boots**.
+4. If you want phone control, open Accessibility settings from that screen, read the in-app explanation, and enable Jarvis Companion. This is opt-in. The service will not tap, type or read until you approve a specific card (and, for risky actions, say Confirm or tap Allow once).
+5. If you want notification reading, enable the notification listener from the same screen. Each read still needs approval.
+6. To connect Google apps, follow [docs/GOOGLE_OAUTH.md](docs/GOOGLE_OAUTH.md) on the computer: create a **new** Desktop client, paste the client id in the Connect tab, then Connect read / Connect send. Finish the browser sign-in on the computer.
+7. To add a plugin, leave the example manifests in `plugins/` or add a folder with `manifest.json` (id must match the folder; only declared permissions). Enable it on the Connect tab. The action still appears as a card.
+8. To add a webhook or MCP server, use the Connect tab with a loopback or private IPv4 address. Each call is approved first.
+9. The kill switch on the desk, in the notification, and on Phone setup immediately revokes pending work and stops listening.
+
+Use **Mute** on the notification when you do not want the mic. The Android system will also show a mic indicator while SpeechRecognizer is running.
 
 ## OpenJarvis as the brain
 

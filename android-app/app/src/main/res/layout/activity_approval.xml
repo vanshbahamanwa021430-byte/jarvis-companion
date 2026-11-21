@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/hud_bg"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:padding="24dp">
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="36dp"
+        android:text="Approval needed"
+        android:textColor="@color/hud_accent"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+    <TextView
+        android:id="@+id/approval_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="@color/hud_text"
+        android:textSize="18sp" />
+    <TextView
+        android:id="@+id/approval_detail"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:textColor="@color/hud_muted"
+        android:textSize="14sp" />
+    <TextView
+        android:id="@+id/approval_risk"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:textColor="@color/hud_accent_soft"
+        android:textSize="13sp" />
+    <Button android:id="@+id/btn_allow" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="28dp" android:background="@drawable/connect_button" android:text="Allow once" android:textAllCaps="false" android:textColor="@color/hud_bg" android:textStyle="bold"/>
+    <Button android:id="@+id/btn_deny" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="12dp" android:background="@color/hud_error" android:text="Deny" android:textAllCaps="false" android:textColor="@color/hud_text"/>
+    <Button android:id="@+id/btn_kill" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="24dp" android:background="@color/hud_bg" android:text="Kill switch" android:textAllCaps="false" android:textColor="@color/hud_error"/>
+</LinearLayout>

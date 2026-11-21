@@ -25,15 +25,21 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 from urllib.parse import parse_qsl, urlsplit
 
+from actions import ActionError, ActionsBroker
 from brain import BrainError, ask as brain_ask, check_health, validate_openjarvis_url
 from broker import Broker, BrokerError, proposal_catalog
 from config import ConfigError, load_config
+from google_oauth import GoogleConnector
 from jlog import get_logger, setup_logging
+from mcp_client import McpRegistry
 from memory_api import MemoryRequestError, handle_get as memory_get, handle_post as memory_post, kinds
+from plugins import PluginRegistry
 from proposal_input import parse_proposal
+from voice import VoiceHub
+from webhook import WebhookRegistry
 from workspace_memory import WorkspaceMemory
 
-VERSION = "2.1.0"
+VERSION = "2.2.0"
 STATIC = Path(__file__).resolve().parent / "static"
 ASSETS = {
     "/": ("index.html", "text/html"),
@@ -188,6 +194,12 @@ class App(ThreadingHTTPServer):
         worker_interval: float = .35,
         allow_lan: bool = False,
         openjarvis_url: str | None = None,
+        actions: ActionsBroker | None = None,
+        plugins: PluginRegistry | None = None,
+        webhooks: WebhookRegistry | None = None,
+        mcp: McpRegistry | None = None,
+        google: GoogleConnector | None = None,
+        voice: VoiceHub | None = None,
     ):
         if allow_lan:
             if address[0] != LAN_BIND:
@@ -212,6 +224,15 @@ class App(ThreadingHTTPServer):
         self.broker, self.key, self.memory = broker, key, memory
         self.allow_lan = bool(allow_lan)
         self.openjarvis_url = openjarvis_url
+        demo_dir = Path(broker._db_path).parent
+        self.actions = actions or ActionsBroker(demo_dir / "actions.sqlite3",
+                                                ttl_seconds=broker.ttl_seconds)
+        self.plugins = plugins or PluginRegistry(Path(__file__).resolve().parent / "plugins")
+        self.webhooks = webhooks or WebhookRegistry()
+        self.mcp = mcp or McpRegistry()
+        self.google = google or GoogleConnector(demo_dir / "google-tokens.json")
+        self.voice = voice or VoiceHub(self.actions, clock=time.time)
+        self.actions.executor = self._execute_desk
         self.lock = threading.Lock()
         self.agent_key = agent_key
         self.auto = bool(auto)
@@ -242,6 +263,14 @@ class App(ThreadingHTTPServer):
                         log.info("job_completed", extra={"request_id": request_id})
                     except BrokerError:
                         pass  # Expired, already completed, revoked, or paused meanwhile.
+                for request_id in self.actions.approved_desk_ids():
+                    if self.stop_worker.is_set():
+                        break
+                    try:
+                        self.actions.execute(request_id)
+                        log.info("action_completed", extra={"request_id": request_id})
+                    except ActionError:
+                        pass
                 failures, delay = 0, self.worker_interval
             except Exception as exc:  # noqa: BLE001 - must never kill silently
                 failures += 1
@@ -255,9 +284,27 @@ class App(ThreadingHTTPServer):
         if self.worker_state == "running":
             self.worker_state = "stopped"
 
+    def _execute_desk(self, kind: str, payload: dict[str, Any]) -> dict[str, Any]:
+        if kind.startswith("google."):
+            return self.google.execute(kind, payload)
+        if kind == "webhook.http":
+            return self.webhooks.send(payload["connector_id"], payload["method"],
+                                      payload.get("path") or "/", payload.get("body") or "")
+        if kind == "mcp.call":
+            return self.mcp.call(payload["server_id"], payload["tool"], payload.get("arguments") or {})
+        if kind == "plugin.run":
+            return self.plugins.run(payload["plugin"], payload["action"], payload.get("params") or {}, {
+                "memory": self.memory,
+                "webhook": lambda params: self.webhooks.send(
+                    params.get("connector_id"), params.get("method") or "GET",
+                    params.get("path") or "/", params.get("body") or ""),
+            })
+        raise ActionError(400, "unknown_action", "No desk executor for this kind.")
+
     def runtime_info(self) -> dict[str, Any]:
         with self.lock:
             remaining = max(0, int(self.session_expires - time.monotonic())) if self.session else 0
+        flags = self.actions.flags()
         return {
             "auto": self.auto,
             "worker": self.worker_state,
@@ -266,6 +313,9 @@ class App(ThreadingHTTPServer):
             "version": VERSION,
             "brain": bool(self.openjarvis_url),
             "openjarvis_url": self.openjarvis_url or "",
+            "killed": flags["killed"],
+            "voice": self.voice.status(),
+            "google": self.google.status(),
         }
 
     def server_close(self) -> None:
@@ -322,7 +372,7 @@ class Handler(BaseHTTPRequestHandler):
     def _dispatch(self, handler: Callable[[], None]) -> None:
         try:
             handler()
-        except (BrokerError, MemoryRequestError, RequestRejected) as err:
+        except (BrokerError, MemoryRequestError, RequestRejected, ActionError) as err:
             self.reply(err.status, {"error": err.code})
         except Exception as exc:  # noqa: BLE001 - answer instead of dropping the socket
             log.error("request_failed", extra={"error": type(exc).__name__,
@@ -384,6 +434,8 @@ class Handler(BaseHTTPRequestHandler):
             except OSError:
                 return self.reply(404, {"error": "not_found"})
             return self.send_payload(200, data, mime)
+        if path == "/api/google/callback":
+            return self.google_callback(parse_query(split.query))
         if not path.startswith("/api/"):
             return self.reply(404, {"error": "not_found"})
         if not self.owner():
@@ -393,8 +445,16 @@ class Handler(BaseHTTPRequestHandler):
         params = parse_query(split.query)
         broker = self.server.broker
         if path == "/api/state":
+            action_snap = self.server.actions.snapshot()
             return self.reply(200, {**broker.snapshot(), **self.server.runtime_info(),
-                                    "memory_kinds": kinds()})
+                                    "memory_kinds": kinds(),
+                                    "action_requests": action_snap["actions"],
+                                    "action_log": action_snap["log"],
+                                    "action_catalog": action_snap["catalog"],
+                                    "device": action_snap["device"],
+                                    "plugins": self.server.plugins.list(),
+                                    "webhooks": self.server.webhooks.list(),
+                                    "mcp": self.server.mcp.list()})
         if path == "/api/status":
             return self.reply(200, {**broker.status(), **self.server.runtime_info()})
         if path == "/api/brain/status":
@@ -425,6 +485,22 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(404, {"error": "memory_disabled"})
             status, payload = memory_get(self.server.memory, path[len("/api/memory/"):], params)
             return self.reply(status, payload)
+        if path == "/api/actions":
+            return self.reply(200, self.server.actions.snapshot())
+        if path == "/api/device/pending":
+            return self.reply(200, {"killed": self.server.actions.flags()["killed"],
+                                    "actions": self.server.actions.pending_for_device(),
+                                    "voice": self.server.voice.status()})
+        if path == "/api/voice/status":
+            return self.reply(200, self.server.voice.status())
+        if path == "/api/google/status":
+            return self.reply(200, self.server.google.status())
+        if path == "/api/plugins":
+            return self.reply(200, {"plugins": self.server.plugins.list()})
+        if path == "/api/webhooks":
+            return self.reply(200, {"connectors": self.server.webhooks.list()})
+        if path == "/api/mcp":
+            return self.reply(200, {"servers": self.server.mcp.list()})
         return self.reply(404, {"error": "not_found"})
 
     # -------------------------------------------------------------- agent role
@@ -500,6 +576,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(201, broker.propose(*fields))
         if path == "/api/pause" and set(body) == {"paused"} and type(body["paused"]) is bool:
             result = broker.set_paused(body["paused"])
+            self.server.actions.set_paused(body["paused"])
+            if body["paused"]:
+                self.server.voice.session = type(self.server.voice.session)()
             log.info("pause_changed", extra={"paused": body["paused"]})
             return self.reply(200, result)
         actions = {"/api/approve": broker.approve, "/api/deny": broker.deny, "/api/execute": broker.execute}
@@ -543,6 +622,90 @@ class Handler(BaseHTTPRequestHandler):
                 return self.reply(404, {"error": "memory_disabled"})
             status, payload = memory_post(self.server.memory, path[len("/api/memory/"):], body)
             return self.reply(status, payload)
+        return self._post_v22(path, body)
+
+    def google_callback(self, params: Mapping[str, str]) -> None:
+        # OAuth redirect is a top-level GET from the browser; the state is the CSRF token.
+        try:
+            result = self.server.google.finish({k: params.get(k, "") for k in ("code", "state", "error")})
+            message = "Connected. You can close this window and return to the desk."
+            ok = True
+        except ActionError as err:
+            result = {"error": err.code}
+            message = "Google sign-in did not finish. Return to the desk and try again."
+            ok = False
+            log.info("google_oauth_failed", extra={"error": err.code})
+        else:
+            log.info("google_oauth_connected", extra={"service": result.get("connected")})
+        page = (
+            "<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'>"
+            "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+            "<title>Google sign-in</title><link rel='stylesheet' href='/app.css'></head>"
+            f"<body class='{"ok" if ok else "err"}'><main class='center-card'>"
+            f"<h1>Google sign-in</h1><p>{message}</p></main></body></html>"
+        )
+        return self.send_payload(200 if ok else 400, page.encode(), mime="text/html")
+
+    def _post_v22(self, path: str, body: dict[str, Any]) -> None:
+        actions = self.server.actions
+        if path == "/api/kill" and set(body) == {"killed"} and type(body["killed"]) is bool:
+            snapshot = actions.set_killed(body["killed"])
+            if body["killed"]:
+                self.server.broker.set_paused(True)
+                self.server.voice.set_muted(True)
+                self.server.voice.session = type(self.server.voice.session)()
+            log.info("kill_changed", extra={"killed": body["killed"]})
+            return self.reply(200, snapshot)
+        if path == "/api/actions/propose" and "kind" in body:
+            rec = actions.propose(
+                body.get("kind"), body.get("payload") or {},
+                reason=body.get("reason"), source=body.get("source") or "owner")
+            return self.reply(201, rec)
+        if path == "/api/actions/approve" and set(body) == {"id"} and type(body["id"]) is str:
+            rec = actions.approve(body["id"])
+            # If this was the voice waiting card, clear it.
+            if self.server.voice.session.waiting_id == body["id"]:
+                self.server.voice.session = type(self.server.voice.session)()
+            return self.reply(200, rec)
+        if path == "/api/actions/deny" and set(body) == {"id"} and type(body["id"]) is str:
+            rec = actions.deny(body["id"])
+            if self.server.voice.session.waiting_id == body["id"]:
+                self.server.voice.session = type(self.server.voice.session)()
+            return self.reply(200, rec)
+        if path == "/api/device/heartbeat" and type(body) is dict:
+            actions.record_heartbeat(body)
+            return self.reply(200, {"ok": True, "killed": actions.flags()["killed"]})
+        if path == "/api/device/complete" and {"id", "ok"} <= body.keys() and type(body["id"]) is str:
+            rec = actions.complete_device(body["id"], bool(body["ok"]), body.get("result") if type(body.get("result")) is dict else None)
+            return self.reply(200, rec)
+        if path == "/api/voice/utterance" and set(body) <= {"text", "source"} and "text" in body:
+            result = self.server.voice.handle(body["text"], source=body.get("source") or "voice")
+            return self.reply(200, result)
+        if path == "/api/voice/mute" and set(body) == {"muted"} and type(body["muted"]) is bool:
+            return self.reply(200, self.server.voice.set_muted(body["muted"]))
+        if path == "/api/google/config" and set(body) == {"client_id"}:
+            self.server.google.set_client_id(body.get("client_id") or None)
+            return self.reply(200, self.server.google.status())
+        if path == "/api/google/start" and {"service"} <= body.keys() <= {"service", "access"}:
+            redirect = f"http://127.0.0.1:{self.server.server_port}/api/google/callback"
+            return self.reply(200, self.server.google.start(
+                body.get("service"), redirect, access=body.get("access") or "read"))
+        if path == "/api/google/disconnect" and set(body) == {"service"}:
+            return self.reply(200, self.server.google.disconnect(body["service"]))
+        if path == "/api/plugins/enable" and set(body) == {"id", "enabled"} and type(body["enabled"]) is bool:
+            return self.reply(200, self.server.plugins.set_enabled(body["id"], body["enabled"]))
+        if path == "/api/webhooks/add" and set(body) == {"name", "url"}:
+            return self.reply(201, self.server.webhooks.add(body["name"], body["url"]))
+        if path == "/api/webhooks/remove" and set(body) == {"id"}:
+            self.server.webhooks.remove(body["id"])
+            return self.reply(200, {"ok": True})
+        if path == "/api/mcp/add" and set(body) == {"name", "url"}:
+            return self.reply(201, self.server.mcp.add(body["name"], body["url"]))
+        if path == "/api/mcp/remove" and set(body) == {"id"}:
+            self.server.mcp.remove(body["id"])
+            return self.reply(200, {"ok": True})
+        if path == "/api/mcp/refresh" and set(body) == {"id"}:
+            return self.reply(200, self.server.mcp.refresh(body["id"]))
         return self.reply(404, {"error": "not_found"})
 
     @property
@@ -595,10 +758,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             memory = WorkspaceMemory(config.memory_db)
         key = secrets.token_urlsafe(18)
         bind_host = LAN_BIND if config.allow_lan else LOOPBACK
+        plugins_dir = config.plugins_dir or (Path(__file__).resolve().parent / "plugins")
+        actions = ActionsBroker(config.db.parent / "actions.sqlite3", ttl_seconds=config.ttl_seconds)
+        google = GoogleConnector(config.db.parent / "google-tokens.json",
+                                 client_id=config.google_client_id)
         app = App((bind_host, config.port), broker, key, auto=not config.manual, agent_key=agent_key,
                   memory=memory, session_seconds=config.session_minutes * 60,
                   worker_interval=config.worker_interval, allow_lan=config.allow_lan,
-                  openjarvis_url=config.openjarvis_url)
+                  openjarvis_url=config.openjarvis_url, actions=actions,
+                  plugins=PluginRegistry(plugins_dir), google=google)
     except (ValueError, OSError, sqlite3.Error) as exc:
         # ValueError messages here never contain key material.
         logger.error("startup_failed", extra={"error": type(exc).__name__, "detail": str(exc)[:200]})

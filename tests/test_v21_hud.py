@@ -114,10 +114,10 @@ class HudServedTests(unittest.TestCase):
         status, body, _ = self.s.request("GET", "/img/jarvis-theme.webp")
         self.assertTrue(body.startswith(b"RIFF") and b"WEBP" in body[:16])
 
-    def test_version_is_2_1(self):
-        self.assertEqual(server.VERSION, "2.1.0")
+    def test_version_is_current(self):
+        self.assertEqual(server.VERSION, "2.2.0")
         self.s.login()
-        self.assertEqual(self.s.request("GET", "/api/status")[1]["version"], "2.1.0")
+        self.assertEqual(self.s.request("GET", "/api/status")[1]["version"], "2.2.0")
 
 
 if __name__ == "__main__":

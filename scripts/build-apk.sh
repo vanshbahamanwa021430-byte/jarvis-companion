@@ -36,8 +36,8 @@ fi
 # Copy to /workspace/out when that folder exists (this build environment),
 # and always keep a copy next to the repo root for local use.
 if [[ -d /workspace/out ]]; then
-  cp -f "$SRC" /workspace/out/jarvis-companion-v2.1.apk
-  echo "Wrote /workspace/out/jarvis-companion-v2.1.apk"
+  cp -f "$SRC" /workspace/out/jarvis-companion-v2.2.apk
+  echo "Wrote /workspace/out/jarvis-companion-v2.2.apk"
 fi
-cp -f "$SRC" "$ROOT/jarvis-companion-v2.1.apk"
-echo "Wrote $ROOT/jarvis-companion-v2.1.apk"
+cp -f "$SRC" "$ROOT/jarvis-companion-v2.2.apk"
+echo "Wrote $ROOT/jarvis-companion-v2.2.apk"

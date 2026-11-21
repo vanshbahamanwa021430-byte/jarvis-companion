@@ -9,5 +9,7 @@
   "log_level": "INFO",
   "log_format": "json",
   "allow_lan": false,
-  "openjarvis_url": null
+  "openjarvis_url": null,
+  "google_client_id": null,
+  "plugins_dir": "plugins"
 }

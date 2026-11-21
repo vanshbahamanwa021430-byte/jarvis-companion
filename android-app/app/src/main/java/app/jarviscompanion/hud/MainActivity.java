@@ -2,6 +2,7 @@ package app.jarviscompanion.hud;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.net.http.SslError;
@@ -56,6 +57,8 @@ public final class MainActivity extends Activity {
 
         findViewById(R.id.connect_button).setOnClickListener(
                 v -> tryConnect(urlField.getText().toString(), true));
+        findViewById(R.id.phone_setup).setOnClickListener(
+                v -> startActivity(new Intent(this, SetupActivity.class)));
         changeServerButton.setOnClickListener(v -> showConnect(true));
         urlField.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_GO || actionId == EditorInfo.IME_ACTION_DONE) {
@@ -163,6 +166,10 @@ public final class MainActivity extends Activity {
         connectPanel.setVisibility(View.GONE);
         webView.setVisibility(View.VISIBLE);
         changeServerButton.setVisibility(View.VISIBLE);
+        if (connectedUrl != null) {
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putString(KEY_URL, connectedUrl).apply();
+        }
+        JarvisService.start(this);
     }
 
     private void showConnect(boolean clearWeb) {
