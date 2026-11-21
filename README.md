@@ -1,4 +1,4 @@
-# Jarvis Companion · v2.2 “voice-first desk”
+# Jarvis Companion · v2.2.1
 
 The first backend increment of an Android-first assistant. Only fictional resources are enabled. The selected assistant engine is the upstream [open-jarvis/OpenJarvis repository](https://github.com/open-jarvis/OpenJarvis), not a fork or a replacement. This increment includes an optional OpenJarvis tool adapter, a tested local agent API, and an Android WebView APK that opens the HUD from the Python server on your computer. A Brain tab can point the desk at a local OpenJarvis server (`jarvis gui`, usually 127.0.0.1:8000). The phone still talks only to this desk; tool calls are queued for your approval and are never auto-executed. A full OpenJarvis + Ollama runtime was not installed in this build environment. Private hosting is not verified.
 
@@ -107,13 +107,13 @@ The APK is a small HUD-themed shell. It does not run the Python broker on the ph
 3. Paste the owner unlock key printed in the computer terminal. Do not share it.
 4. Use **Change server** if you need to point the app at a different address.
 
-The application id is `app.jarviscompanion.hud`. The APK is signed with a project debug keystore, not a store or Prvlar key. The launcher icon and splash use a crop of the same core orb. To rebuild it: `scripts/build-apk.sh` (needs a JDK and the Android SDK).
+The application id is `app.jarviscompanion.hud`. Production APKs (v2.2.1+) are signed with a dedicated Jarvis release key, not the earlier debug keystore and not a store or Prvlar key. Because the key changed, uninstall the debug-signed v2.2.0 app before installing this one. The launcher icon and splash use a crop of the same core orb. To rebuild a release APK: `scripts/build-apk.sh` (needs a JDK, the Android SDK, and the release keystore directory).
 
 
 ## Set up v2.2 on your computer and phone
 
 1. Start the desk as in v2.1 (`python server.py --allow-lan` on trusted Wi-Fi, or `adb reverse` for USB).
-2. Install `jarvis-companion-v2.2.apk` (same project debug key as v2.1). Open the app, enter the desk address, paste the owner key.
+2. Install `jarvis-companion-v2.2.1.apk`. If you already installed the debug-signed v2.2.0 APK, uninstall it first — the production signing key is different, so Android will not treat this as an update. Open the app, enter the desk address, paste the owner key.
 3. Tap **Phone setup**. Allow notifications and the microphone if you want “Hey Jarvis”. Optionally ignore battery optimisation, and optionally enable **Start Jarvis after the phone boots**.
 4. If you want phone control, open Accessibility settings from that screen, read the in-app explanation, and enable Jarvis Companion. This is opt-in. The service will not tap, type or read until you approve a specific card (and, for risky actions, say Confirm or tap Allow once).
 5. If you want notification reading, enable the notification listener from the same screen. Each read still needs approval.

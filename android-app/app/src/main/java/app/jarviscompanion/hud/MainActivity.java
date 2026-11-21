@@ -79,6 +79,7 @@ public final class MainActivity extends Activity {
     }
 
     private void setupWebView() {
+        WebView.setWebContentsDebuggingEnabled(false);
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);

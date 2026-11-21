@@ -2,6 +2,11 @@ plugins {
     id "com.android.application"
 }
 
+def releaseStoreDir = System.getenv("JARVIS_RELEASE_STORE_DIR") ?: "/workspace/jarvis-keystore"
+def releaseStoreFile = file("${releaseStoreDir}/jarvis-release.keystore")
+def releasePassFile = file("${releaseStoreDir}/keystore.password")
+def hasReleaseStore = releaseStoreFile.isFile() && releasePassFile.isFile()
+
 android {
     namespace "app.jarviscompanion.hud"
     compileSdk 35
@@ -9,25 +14,39 @@ android {
         applicationId "app.jarviscompanion.hud"
         minSdk 26
         targetSdk 35
-        versionCode 2
-        versionName "2.2.0"
+        versionCode 3
+        versionName "2.2.1"
     }
     signingConfigs {
-        selfSigned {
+        debugStore {
             storeFile file("../keystore/jarvis-debug.keystore")
             storePassword "android"
             keyAlias "jarvis"
             keyPassword "android"
         }
+        if (hasReleaseStore) {
+            release {
+                storeFile releaseStoreFile
+                storePassword releasePassFile.getText("UTF-8").trim()
+                keyAlias "jarvis"
+                keyPassword releasePassFile.getText("UTF-8").trim()
+            }
+        }
     }
     buildTypes {
         release {
-            signingConfig signingConfigs.selfSigned
-            minifyEnabled false
-            shrinkResources false
+            if (!hasReleaseStore) {
+                throw new GradleException("Release signing files were not found under ${releaseStoreDir}. Set JARVIS_RELEASE_STORE_DIR.")
+            }
+            signingConfig signingConfigs.release
+            debuggable false
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
         debug {
-            signingConfig signingConfigs.selfSigned
+            signingConfig signingConfigs.debugStore
+            debuggable true
         }
     }
     compileOptions {

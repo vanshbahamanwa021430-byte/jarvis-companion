@@ -114,10 +114,18 @@ class HudServedTests(unittest.TestCase):
         status, body, _ = self.s.request("GET", "/img/jarvis-theme.webp")
         self.assertTrue(body.startswith(b"RIFF") and b"WEBP" in body[:16])
 
+    def test_production_ui_hides_sample_and_demo_banners(self):
+        html, js = FILES["index.html"], FILES["app.js"]
+        self.assertNotIn("demo data only", html)
+        self.assertNotIn("This demo never connects", html)
+        self.assertIn('aria-labelledby="request-title" hidden', html)
+        self.assertNotIn("Create a demo request", js)
+        self.assertIn("setWebContentsDebuggingEnabled(false)", (Path(__file__).resolve().parents[1] / "android-app/app/src/main/java/app/jarviscompanion/hud/MainActivity.java").read_text())
+
     def test_version_is_current(self):
-        self.assertEqual(server.VERSION, "2.2.0")
+        self.assertEqual(server.VERSION, "2.2.1")
         self.s.login()
-        self.assertEqual(self.s.request("GET", "/api/status")[1]["version"], "2.2.0")
+        self.assertEqual(self.s.request("GET", "/api/status")[1]["version"], "2.2.1")
 
 
 if __name__ == "__main__":

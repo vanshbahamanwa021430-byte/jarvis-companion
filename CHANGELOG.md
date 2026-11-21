@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.2.1 production release build
+
+A signed production APK of the v2.2 app. Safety gates are unchanged: every action still needs explicit owner approval, the kill switch, spoken confirmation for risky voice commands, and opt-in Accessibility all remain. Default bind is still loopback.
+
+### Changed
+- Android release build: `debuggable` is false, WebView debugging is off, and R8 minify/resource shrink is on.
+- Signed with a new dedicated Jarvis release key (not the debug keystore and not the Prvlar key). Because the signing key changed, Android will not install this over the debug-signed v2.2.0 APK — uninstall that build first.
+- The shipped HUD no longer shows the sample “Test a request” panel, “demo data only” branding, or other test-mode copy. The synthetic catalog and mocks remain in the test suite and server APIs used by tests.
+
+### Notes
+- The orb artwork remains Marvel/Disney, for personal use only; keep the repository private.
+- A physical phone, a booted emulator, a live microphone, Accessibility on a device, and a live Google sign-in were not re-verified in this build environment.
+
+
 ## 2.2.0 voice-first phone control, Google connectors, plugins
 
 Builds on v2.1. The core model is unchanged: every action is proposed and needs an explicit owner approval before it can run, the default bind is loopback, and CSP / no CORS / one-approval-per-access still hold. 185 automated tests pass (145 previous plus 40 new).

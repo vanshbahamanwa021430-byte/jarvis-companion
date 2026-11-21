@@ -39,7 +39,7 @@ from voice import VoiceHub
 from webhook import WebhookRegistry
 from workspace_memory import WorkspaceMemory
 
-VERSION = "2.2.0"
+VERSION = "2.2.1"
 STATIC = Path(__file__).resolve().parent / "static"
 ASSETS = {
     "/": ("index.html", "text/html"),

@@ -17,3 +17,6 @@ android-app/*.apk
 .local-demo/
 jarvis-companion-v2.1.apk
 jarvis-companion-v2.2.apk
+jarvis-companion-v2.2.1.apk
+keystore.password
+*.release.keystore

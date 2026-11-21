@@ -5,6 +5,7 @@ export JAVA_HOME="${JAVA_HOME:-/workspace/android/jdk}"
 export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/workspace/android/sdk}}"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
 export PATH="$JAVA_HOME/bin:$PATH"
+export JARVIS_RELEASE_STORE_DIR="${JARVIS_RELEASE_STORE_DIR:-/workspace/jarvis-keystore}"
 
 if [[ ! -x "$JAVA_HOME/bin/java" ]]; then
   echo "JAVA_HOME does not point at a JDK: $JAVA_HOME" >&2
@@ -15,15 +16,15 @@ if [[ ! -d "$ANDROID_HOME/platforms" ]]; then
   exit 1
 fi
 
-printf 'sdk.dir=%s\n' "$ANDROID_HOME" > "$ROOT/android-app/local.properties"
-
-KS="$ROOT/android-app/keystore/jarvis-debug.keystore"
-if [[ ! -f "$KS" ]]; then
-  mkdir -p "$(dirname "$KS")"
-  keytool -genkeypair -keystore "$KS" -alias jarvis -keyalg RSA -keysize 2048 -validity 10000 \
-    -storepass android -keypass android \
-    -dname "CN=Jarvis Companion Debug, OU=Debug, O=Jarvis Companion, C=IN" -storetype JKS
+STORE="$JARVIS_RELEASE_STORE_DIR/jarvis-release.keystore"
+PASS="$JARVIS_RELEASE_STORE_DIR/keystore.password"
+if [[ ! -f "$STORE" || ! -f "$PASS" ]]; then
+  echo "Release keystore not found under $JARVIS_RELEASE_STORE_DIR" >&2
+  echo "Create jarvis-release.keystore and keystore.password (mode 0600) there." >&2
+  exit 1
 fi
+
+printf 'sdk.dir=%s\n' "$ANDROID_HOME" > "$ROOT/android-app/local.properties"
 
 cd "$ROOT/android-app"
 ./gradlew assembleRelease --no-daemon "$@"
@@ -33,11 +34,9 @@ if [[ ! -f "$SRC" ]]; then
   exit 1
 fi
 
-# Copy to /workspace/out when that folder exists (this build environment),
-# and always keep a copy next to the repo root for local use.
 if [[ -d /workspace/out ]]; then
-  cp -f "$SRC" /workspace/out/jarvis-companion-v2.2.apk
-  echo "Wrote /workspace/out/jarvis-companion-v2.2.apk"
+  cp -f "$SRC" /workspace/out/jarvis-companion-v2.2.1.apk
+  echo "Wrote /workspace/out/jarvis-companion-v2.2.1.apk"
 fi
-cp -f "$SRC" "$ROOT/jarvis-companion-v2.2.apk"
-echo "Wrote $ROOT/jarvis-companion-v2.2.apk"
+cp -f "$SRC" "$ROOT/jarvis-companion-v2.2.1.apk"
+echo "Wrote $ROOT/jarvis-companion-v2.2.1.apk"

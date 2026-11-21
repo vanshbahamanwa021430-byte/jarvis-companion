@@ -17,7 +17,7 @@ const ERRORS = Object.freeze({
   try_again_later: "Too many attempts. Wait a moment and try again.",
   paused: "Access is paused. Resume it before creating or allowing a request.",
   invalid_state: "This request already changed. Its current status is shown below.",
-  unknown_action: "Choose an action and item from the demo catalog.",
+  unknown_action: "That action is not available.",
   invalid_reason: "Enter a plain-text reason of up to 240 characters.",
   request_limit: "Resolve existing requests before creating more.",
   not_found: "That item is no longer available.",
@@ -421,7 +421,7 @@ function renderDesk() {
   const focused = $("requests").contains(document.activeElement) ? document.activeElement.dataset.focus : null;
   const cards = [...actionActive.map(actionCard), ...demoActive.map(requestCard)];
   $("requests").replaceChildren(...(cards.length ? cards
-    : [empty("No requests waiting", st.killed ? "The kill switch is on." : st.paused ? "Access is paused. Resume to create test requests." : "Create a demo request, or speak a command after Hey Jarvis.")]));
+    : [empty("No requests waiting", st.killed ? "The kill switch is on." : st.paused ? "Access is paused. Resume it to allow new requests." : "Speak a command after Hey Jarvis, or approve a request from the phone.")]));
   if (focused !== null) {
     const next = [...$("requests").querySelectorAll("button")].find((b) => b.dataset.focus === focused && !b.disabled)
       || $("requests").querySelector("button:not(:disabled)") || $("tab-requests");

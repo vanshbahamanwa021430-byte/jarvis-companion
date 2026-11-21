@@ -35,7 +35,7 @@
   <header class="topbar">
     <a class="brand" href="#main" aria-label="Jarvis Companion home">
       <span class="logo"><svg aria-hidden="true"><use href="#i-core"/></svg></span>
-      <span class="brand-text"><strong>Jarvis Companion</strong><small>v2.2 · HUD · demo data only</small></span>
+      <span class="brand-text"><strong>Jarvis Companion</strong><small>v2.2.1 · one approval per access</small></span>
     </a>
     <div class="hud-clock" aria-hidden="true"><time id="clock">--:--:--</time><span id="clock-date"></span></div>
     <div class="topbar-actions">
@@ -89,7 +89,7 @@
       </div>
       <p class="eyebrow">Owner access · identity required</p>
       <h1 id="login-title">Unlock your access desk</h1>
-      <p class="muted">Paste the owner key printed in your server terminal. This demo never connects to real accounts or files.</p>
+      <p class="muted">Paste the owner key printed in your server terminal. Every action still needs your approval.</p>
       <form id="login-form" novalidate>
         <label for="key">Owner key</label>
         <input id="key" name="key" type="password" autocomplete="off" spellcheck="false" required aria-describedby="login-error">
@@ -226,7 +226,7 @@
             <div id="results" class="list"></div>
           </section>
         </div>
-        <aside class="card" aria-labelledby="request-title">
+        <aside class="card" aria-labelledby="request-title" hidden>
           <header class="card-head"><h2 id="request-title">Test a request</h2></header>
           <p class="muted small">Simulates Jarvis asking for a sample item. Nothing here reads your real files or accounts.</p>
           <form id="request-form">
@@ -353,7 +353,7 @@
         <aside class="stack">
           <section class="card" aria-labelledby="google-title">
             <header class="card-head"><h2 id="google-title">Google apps</h2></header>
-            <p class="muted small">Sign-in happens on this computer in your browser, not on the phone. Use a separate Desktop OAuth client. Paste the client id only (it is not a secret). Exact Cloud Console steps are in the README. Read actions still need approval; send and write always need approval. Tokens stay in the desk’s local demo folder.</p>
+            <p class="muted small">Sign-in happens on this computer in your browser, not on the phone. Use a separate Desktop OAuth client. Paste the client id only (it is not a secret). Exact Cloud Console steps are in the README. Read actions still need approval; send and write always need approval. Tokens stay in the desk’s local data folder on this computer.</p>
             <form id="google-client-form">
               <label for="google-client-id">OAuth client id</label>
               <input id="google-client-id" name="google-client-id" maxlength="120" autocomplete="off" spellcheck="false" placeholder="1234-abc.apps.googleusercontent.com">
@@ -386,7 +386,7 @@
       </section>
 
       <footer class="foot">
-        <span>Loopback by default · demo data only · one approval per access</span>
+        <span>Loopback by default · one approval per access</span>
         <span id="version"></span>
       </footer>
     </section>
