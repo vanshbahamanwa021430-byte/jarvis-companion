@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#03070d">
+  <meta name="referrer" content="no-referrer">
+  <title>Jarvis Companion · Access desk</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
+</head>
+<body data-core="offline">
+  <a class="skip" href="#main">Skip to main content</a>
+  <svg class="sprites" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 22 2.4-1.4c3.5-2 5.6-5.7 5.6-9.7V6l-8-4-8 4v4.9c0 4 2.1 7.7 5.6 9.7L12 22Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14m6-14v14"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5v14l11-7L7 5Z"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m6 12 4 4 8-8"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M4 5h16l2 10v5H2v-5L4 5Z"/><path d="M2 15h6l2 2h4l2-2h6"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4 1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5Z"/></symbol>
+    <symbol id="i-auto" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v18a9 9 0 0 0 0-18Z" fill="currentColor"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-core" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="12" r="5.5" stroke-dasharray="3 2"/><path d="M12 9.5 14.2 13.3H9.8Z"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4m0 3v.01"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <a class="brand" href="#main" aria-label="Jarvis Companion home">
+      <span class="logo"><svg aria-hidden="true"><use href="#i-core"/></svg></span>
+      <span class="brand-text"><strong>Jarvis Companion</strong><small>v2.1 · HUD · demo data only</small></span>
+    </a>
+    <div class="hud-clock" aria-hidden="true"><time id="clock">--:--:--</time><span id="clock-date"></span></div>
+    <div class="topbar-actions">
+      <span id="live" class="live" role="status" aria-live="polite" hidden><i aria-hidden="true"></i><span id="live-label">Live</span></span>
+      <span id="mode" class="mode-chip" hidden>Mode <b id="mode-label">–</b></span>
+      <button id="theme" class="button ghost icon-only" type="button" aria-label="Theme: HUD dark"><svg aria-hidden="true"><use href="#i-moon"/></svg></button>
+      <button id="logout" class="button ghost" type="button" hidden><svg aria-hidden="true"><use href="#i-lock"/></svg><span>Lock</span></button>
+    </div>
+  </header>
+
+  <div class="hud-frame" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+  <div id="boot" class="boot" hidden>
+    <div class="boot-visual" aria-hidden="true">
+      <svg aria-hidden="true" class="boot-rings" viewBox="-100 -100 200 200" focusable="false">
+        <circle class="br br1" r="90"/><circle class="br br2" r="72"/><circle class="br br3" r="54"/><circle class="br-core" r="22"/>
+      </svg>
+      <ol class="boot-log">
+        <li>Initialising core interface</li>
+        <li>Secure link · loopback only</li>
+        <li>Approval guard · armed</li>
+        <li>Activity log · synchronised</li>
+      </ol>
+      <p id="boot-greeting" class="boot-greeting"></p>
+    </div>
+    <button id="boot-skip" class="button ghost boot-skip" type="button">Skip intro</button>
+  </div>
+
+  <main id="main" tabindex="-1">
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <section id="loading" class="center-card" aria-busy="true">
+      <span class="spinner" aria-hidden="true"></span>
+      <p>Connecting to your access desk…</p>
+    </section>
+
+    <section id="offline" class="center-card is-offline" hidden aria-labelledby="offline-title">
+      <div class="marker danger"><svg aria-hidden="true"><use href="#i-alert"/></svg></div>
+      <p class="eyebrow">Link status · offline</p>
+      <h1 id="offline-title">Can’t reach the local server</h1>
+      <p class="muted">Check that <code>python server.py</code> is still running in your terminal, then try again.</p>
+      <button id="retry" class="button primary" type="button">Try again</button>
+    </section>
+
+    <section id="unlock" class="center-card" aria-labelledby="login-title" hidden>
+      <div class="unlock-emblem" aria-hidden="true">
+        <svg aria-hidden="true" viewBox="-100 -100 200 200" focusable="false">
+          <circle class="ue ue1" r="90"/><circle class="ue ue2" r="74"/><circle class="ue ue3" r="58"/><circle class="ue-core" r="30"/>
+        </svg>
+        <svg aria-hidden="true" class="ue-lock"><use href="#i-lock"/></svg>
+      </div>
+      <p class="eyebrow">Owner access · identity required</p>
+      <h1 id="login-title">Unlock your access desk</h1>
+      <p class="muted">Paste the owner key printed in your server terminal. This demo never connects to real accounts or files.</p>
+      <form id="login-form" novalidate>
+        <label for="key">Owner key</label>
+        <input id="key" name="key" type="password" autocomplete="off" spellcheck="false" required aria-describedby="login-error">
+        <p id="login-error" class="field-error" hidden></p>
+        <button class="button primary wide" type="submit"><span>Unlock</span><svg aria-hidden="true"><use href="#i-arrow"/></svg></button>
+      </form>
+    </section>
+
+    <section id="desk" aria-labelledby="desk-title" hidden>
+      <h1 id="desk-title" class="visually-hidden">Access desk</h1>
+
+      <section class="hero" aria-label="System overview">
+        <pre id="tele-left" class="telemetry tele-left" aria-hidden="true"></pre>
+        <pre id="tele-right" class="telemetry tele-right" aria-hidden="true"></pre>
+
+        <ul class="gauges gauges-left" aria-label="Request summary">
+          <li class="gauge g-pending">
+            <svg class="gauge-ring" viewBox="-50 -50 100 100" aria-hidden="true" focusable="false"><circle class="g-ticks" r="46"/><circle class="g-track" r="39"/><circle id="gauge-pending" class="g-fill" r="39" pathLength="100" stroke-dasharray="0 100"/></svg>
+            <div class="gauge-read"><strong id="stat-pending">0</strong><span class="stat-label">Pending</span><span class="stat-sub">waiting for you</span></div>
+          </li>
+          <li class="gauge g-approved">
+            <svg class="gauge-ring" viewBox="-50 -50 100 100" aria-hidden="true" focusable="false"><circle class="g-ticks" r="46"/><circle class="g-track" r="39"/><circle id="gauge-approved" class="g-fill" r="39" pathLength="100" stroke-dasharray="0 100"/></svg>
+            <div class="gauge-read"><strong id="stat-approved">0</strong><span class="stat-label">Approved</span><span class="stat-sub">not yet run</span></div>
+          </li>
+        </ul>
+
+        <div class="core-wrap">
+          <div class="core">
+            <svg class="core-svg" viewBox="-200 -200 400 400" aria-hidden="true" focusable="false">
+            <defs>
+              <radialGradient id="core-glow">
+                <stop offset="0" class="cg-0"/>
+                <stop offset=".35" class="cg-1"/>
+                <stop offset="1" class="cg-2"/>
+              </radialGradient>
+              <path id="core-text-path" d="M0,-133 a133,133 0 1,1 -0.01,0"/>
+            </defs>
+            <circle class="c-halo" r="196"/>
+            <g class="spin s1"><g class="boost b1">
+              <circle class="c-ticks" r="186"/>
+              <circle class="c-ticks-major" r="186"/>
+            </g></g>
+            <g class="spin s2"><g class="boost b2">
+              <circle class="c-arc c-arc-a" r="170"/>
+              <circle class="c-arc c-hot c-arc-b" r="170"/>
+            </g></g>
+            <circle class="c-thin" r="156"/>
+            <g class="spin s3"><g class="boost b3">
+              <circle class="c-seg" r="145"/>
+            </g></g>
+            <g class="spin s4"><g class="boost b4">
+              <text class="c-label"><textPath href="#core-text-path">JARVIS COMPANION · APPROVAL GUARD ARMED · LOOPBACK LINK · ONE ACCESS PER APPROVAL ·</textPath></text>
+            </g></g>
+            <g class="spin s5"><g class="boost b5">
+              <circle class="c-arc c-arc-c" r="116"/>
+              <circle class="c-arc c-hot c-arc-d" r="108"/>
+            </g></g>
+            <circle class="c-fine" r="98"/>
+            <g class="c-cross">
+              <path d="M0-92v26M0 66v26M-92 0h26M66 0h26"/>
+              <path class="c-cross-diag" d="M-60-60l10 10M60-60l-10 10M-60 60l10-10M60 60l-10-10"/>
+            </g>
+            <g class="spin s6"><g class="boost b6">
+              <circle class="c-arc c-arc-e" r="78"/>
+              <polygon class="c-hex" points="0,-44 38,-22 38,22 0,44 -38,22 -38,-22"/>
+            </g></g>
+            <circle class="c-pulse-ring" r="58"/>
+            <circle class="c-core" r="56"/>
+            <circle class="c-core-ring" r="40"/>
+            <circle class="c-heart" r="16"/>
+          </svg>
+            <p class="core-label" aria-hidden="true"><span id="core-state">Standby</span></p>
+          </div>
+          <p id="greeting" class="greeting">All systems online.</p>
+          <p class="core-status"><span id="core-status">You decide what Jarvis can access, one request at a time.</span></p>
+          <p class="session-line">Session ends in <strong id="stat-session">–</strong></p>
+        </div>
+
+        <ul class="gauges gauges-right" aria-label="Worker summary">
+          <li class="gauge g-running">
+            <svg class="gauge-ring" viewBox="-50 -50 100 100" aria-hidden="true" focusable="false"><circle class="g-ticks" r="46"/><circle class="g-track" r="39"/><circle id="gauge-running" class="g-fill" r="39" pathLength="100" stroke-dasharray="0 100"/></svg>
+            <div class="gauge-read"><strong id="stat-running">0</strong><span class="stat-label">Running</span><span class="stat-sub">worker <b id="stat-worker">–</b></span></div>
+          </li>
+          <li class="gauge g-history">
+            <svg class="gauge-ring" viewBox="-50 -50 100 100" aria-hidden="true" focusable="false"><circle class="g-ticks" r="46"/><circle class="g-track" r="39"/><circle id="gauge-history" class="g-fill" r="39" pathLength="100" stroke-dasharray="0 100"/></svg>
+            <div class="gauge-read"><strong id="stat-history">0</strong><span class="stat-label">History</span><span class="stat-sub">closed requests</span></div>
+          </li>
+        </ul>
+      </section>
+
+      <div class="desk-head">
+        <p class="eyebrow">Access desk · one approval per access</p>
+        <button id="pause" class="button danger big" type="button" aria-pressed="false">
+          <svg aria-hidden="true"><use href="#i-pause"/></svg><span id="pause-label">Pause all access</span>
+        </button>
+      </div>
+
+      <div id="paused-banner" class="banner warn" hidden>
+        <svg aria-hidden="true"><use href="#i-pause"/></svg>
+        <div><strong>All access is paused.</strong> Outstanding approvals were revoked. Resuming does not restore them; new requests still need your approval.</div>
+      </div>
+      <div id="worker-banner" class="banner error" hidden>
+        <svg aria-hidden="true"><use href="#i-alert"/></svg>
+        <div><strong>The background worker stopped after repeated errors.</strong> Approved requests won’t run automatically. Use <em>Run now</em> or restart the server.</div>
+      </div>
+
+      <div class="tabs" role="tablist" aria-label="Desk sections">
+        <button role="tab" id="tab-requests" aria-controls="panel-requests" aria-selected="true">Requests <span id="tab-badge" class="tab-badge" hidden>0</span></button>
+        <button role="tab" id="tab-history" aria-controls="panel-history" aria-selected="false" tabindex="-1">History</button>
+        <button role="tab" id="tab-activity" aria-controls="panel-activity" aria-selected="false" tabindex="-1">Activity</button>
+        <button role="tab" id="tab-memory" aria-controls="panel-memory" aria-selected="false" tabindex="-1" hidden>Memory</button>
+      </div>
+
+      <section id="panel-requests" role="tabpanel" aria-labelledby="tab-requests" class="panel-grid">
+        <div class="stack">
+          <section class="card" aria-labelledby="queue-title">
+            <header class="card-head"><h2 id="queue-title">Permission queue</h2><span id="queue-count" class="pill">0 pending</span></header>
+            <div id="requests" class="list"></div>
+          </section>
+          <section class="card" aria-labelledby="results-title">
+            <header class="card-head"><h2 id="results-title">Recent results</h2></header>
+            <div id="results" class="list"></div>
+          </section>
+        </div>
+        <aside class="card" aria-labelledby="request-title">
+          <header class="card-head"><h2 id="request-title">Test a request</h2></header>
+          <p class="muted small">Simulates Jarvis asking for a sample item. Nothing here reads your real files or accounts.</p>
+          <form id="request-form">
+            <label for="action">Action</label><select id="action" name="action" required></select>
+            <label for="target">Item</label><select id="target" name="target" required></select>
+            <label for="reason">Reason <span class="optional">optional</span></label>
+            <textarea id="reason" name="reason" rows="3" maxlength="240" placeholder="Why does Jarvis need this?" aria-describedby="reason-count"></textarea>
+            <p id="reason-count" class="hint">0 / 240</p>
+            <button id="propose" class="button primary wide" type="submit"><svg aria-hidden="true"><use href="#i-plus"/></svg><span>Create demo request</span></button>
+          </form>
+        </aside>
+      </section>
+
+      <section id="panel-history" role="tabpanel" aria-labelledby="tab-history" class="card" hidden>
+        <header class="card-head"><h2>Request history</h2><span id="history-count" class="pill"></span></header>
+        <form id="history-filters" class="filters">
+          <label>Status <select id="history-status"><option value="">All</option></select></label>
+          <label>Action <select id="history-action"><option value="">All</option></select></label>
+        </form>
+        <div id="history" class="list"></div>
+        <button id="history-more" class="button wide" type="button" hidden>Load more</button>
+      </section>
+
+      <section id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" class="card" hidden>
+        <header class="card-head"><h2>Activity log</h2></header>
+        <form id="activity-filters" class="filters">
+          <label>Event <select id="activity-event"><option value="">All events</option></select></label>
+        </form>
+        <ol id="activity" class="timeline"></ol>
+        <button id="activity-more" class="button wide" type="button" hidden>Load more</button>
+      </section>
+
+      <section id="panel-memory" role="tabpanel" aria-labelledby="tab-memory" class="panel-grid" hidden>
+        <div class="stack">
+          <section class="card" aria-labelledby="memory-title">
+            <header class="card-head"><h2 id="memory-title">Workspace memory</h2></header>
+            <p class="muted small">Synthetic project notes stored locally. Only you (the unlocked owner) can see them; the agent key cannot read or write memory.</p>
+            <div class="filters">
+              <label>Workspace <select id="mem-workspace"></select></label>
+              <label>Project <select id="mem-project"></select></label>
+            </div>
+            <form id="mem-search" class="filters" role="search">
+              <label class="grow">Search <input id="mem-query" type="search" maxlength="320" placeholder="Title or text"></label>
+              <label>Kind <select id="mem-kind"><option value="">All kinds</option></select></label>
+            </form>
+            <div id="mem-records" class="list"></div>
+          </section>
+        </div>
+        <aside class="stack">
+          <section class="card" aria-labelledby="mem-new-title">
+            <header class="card-head"><h2 id="mem-new-title">Organize</h2></header>
+            <form id="mem-workspace-form" class="inline-form">
+              <label for="mem-workspace-title">New workspace</label>
+              <div class="row"><input id="mem-workspace-title" maxlength="160" required placeholder="e.g. Study planner"><button class="button" type="submit">Add</button></div>
+            </form>
+            <form id="mem-project-form" class="inline-form">
+              <label for="mem-project-title">New project</label>
+              <div class="row"><input id="mem-project-title" maxlength="160" required placeholder="e.g. Exam week"><button class="button" type="submit">Add</button></div>
+            </form>
+          </section>
+          <section class="card" aria-labelledby="mem-record-title">
+            <header class="card-head"><h2 id="mem-record-title">Add a record</h2></header>
+            <form id="mem-record-form">
+              <label for="mem-record-kind">Kind</label><select id="mem-record-kind"></select>
+              <label for="mem-record-name">Title</label><input id="mem-record-name" maxlength="160" required>
+              <label for="mem-record-body">Text <span class="optional">optional</span></label>
+              <textarea id="mem-record-body" rows="4" maxlength="16000"></textarea>
+              <button class="button primary wide" type="submit"><svg aria-hidden="true"><use href="#i-plus"/></svg><span>Save record</span></button>
+            </form>
+          </section>
+        </aside>
+      </section>
+
+      <footer class="foot">
+        <span>Loopback only · never forward this port · demo data only</span>
+        <span id="version"></span>
+      </footer>
+    </section>
+  </main>
+
+  <dialog id="confirm" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title">Are you sure?</h2>
+      <p id="confirm-text" class="muted"></p>
+      <div class="row end">
+        <button value="cancel" class="button" type="submit">Cancel</button>
+        <button value="ok" id="confirm-ok" class="button danger" type="submit">Delete</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>

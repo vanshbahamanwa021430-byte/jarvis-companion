@@ -1,0 +1,11 @@
+{
+  "port": 8765,
+  "db": ".local-demo/broker.sqlite3",
+  "memory_db": ".local-demo/memory.sqlite3",
+  "manual": false,
+  "ttl_seconds": 300,
+  "session_minutes": 60,
+  "worker_interval": 0.35,
+  "log_level": "INFO",
+  "log_format": "json"
+}
